@@ -1,0 +1,97 @@
+/* src/shared/styles/global.css
+   Minimal global styles: fonts, scrollbar, MathJax reset, base body */
+
+/* ---- Font Faces ---- */
+@font-face {
+  font-family: 'SolaimanLipi';
+  src: url('https://fonts.maateen.me/solaiman-lipi/font.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('https://fonts.gstatic.com/s/outfit/v11/QGYyz_MVcBeNP4NjuGObqx1XmO1I4TC1O4a0Ew.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* ---- Base Reset ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'SolaimanLipi', 'Hind Siliguri', 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Bengali text helper (overrides forced font) ---- */
+.bengali-text {
+  font-family: 'SolaimanLipi', 'Hind Siliguri', 'Segoe UI', sans-serif !important;
+  line-height: 1.8;
+  word-break: normal !important;
+  overflow-wrap: anywhere;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Custom scrollbar (light & dark) ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb,
+.theme-dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+/* ---- MathJax reset ---- */
+mjx-container {
+  display: inline-block !important;
+  margin: 0 2px !important;
+  vertical-align: middle !important;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+mjx-mtext {
+  font-family: 'SolaimanLipi', sans-serif !important;
+}
+
+/* ---- QuickZ logo text (if needed outside Tailwind) ---- */
+.quickz-logo .quick { color: inherit; }
+.quickz-logo .z { color: #10b981 !important; }
+
+/* ---- Inline loader animation fallback ---- */
+.quick-loader {
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #4f46e5;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
