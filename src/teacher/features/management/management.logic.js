@@ -1,0 +1,206 @@
+// src/teacher/features/management/management.logic.js
+// Management hub: overview page, live exam management with realtime snapshot
+
+import { db } from '../../../shared/config/firebase.js';
+import { AppState } from '../../core/state.js';
+import { Teacher } from '../../teacher-core.js';
+import {
+  collection, query, where, onSnapshot
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+let unsubscribes = window.unsubscribes;
+
+export const ManagementLogic = {
+
+  /**
+   * Show the management hub overview.
+   */
+  async showManagementView() {
+    if (!AppState.selectedGroup) {
+      Teacher.selectGroupView?.('management');
+      return;
+    }
+
+    document.getElementById('floating-math-btn')?.classList.add('hidden');
+    document.getElementById('math-symbols-panel')?.classList.remove('show');
+
+    const app = document.getElementById('app-container');
+    app.innerHTML = `
+    <div class="pb-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold font-en text-gray-800 dark:text-white bengali-text">ম্যানেজমেন্ট হাব</h2>
+      </div>
+
+      <!-- Current course brief -->
+      <div id="current-group-info-card" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border dark:border-gray-700 mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <i class="fas fa-book"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-bold dark:text-white">${AppState.selectedGroup.name}</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400">সক্রিয় কোর্স</p>
+          </div>
+          <button onclick="Teacher.manageGroupsView()" class="text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg font-bold">
+            <i class="fas fa-cog mr-1"></i>কোর্স ব্যবস্থাপনা
+          </button>
+        </div>
+      </div>
+
+      <div class="management-list">
+        <div class="management-item" onclick="Teacher.liveExamManagementView()">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-900 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xl">
+              <i class="fas fa-broadcast-tower"></i>
+            </div>
+            <div>
+              <div class="font-bold text-sm text-gray-700 dark:text-white bengali-text">লাইভ পরীক্ষা ব্যবস্থাপনা</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 bengali-text">চলমান লাইভ পরীক্ষা বাতিল ও প্রকাশ করুন</div>
+            </div>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400"></i>
+        </div>
+
+        <div class="management-item" onclick="Teacher.manageGroupsView()">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-amber-50 dark:bg-amber-900 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-400 text-xl">
+              <i class="fas fa-book"></i>
+            </div>
+            <div>
+              <div class="font-bold text-sm text-gray-700 dark:text-white bengali-text">কোর্স ব্যবস্থাপনা</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 bengali-text">আপনার কোর্সের শিক্ষার্থী পরিচালনা করুন</div>
+            </div>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400"></i>
+        </div>
+
+        <div class="management-item" onclick="Teacher.archiveGroupsView()">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-rose-50 dark:bg-rose-900 rounded-full flex items-center justify-center text-rose-600 dark:text-rose-400 text-xl">
+              <i class="fas fa-archive"></i>
+            </div>
+            <div>
+              <div class="font-bold text-sm text-gray-700 dark:text-white bengali-text">আর্কাইভ কোর্স</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 bengali-text">আর্কাইভকৃত কোর্স দেখুন ও পরিচালনা করুন</div>
+            </div>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400"></i>
+        </div>
+
+        <div class="management-item" onclick="Teacher.noticeManagementView()">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-blue-50 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 text-xl">
+              <i class="fas fa-bullhorn"></i>
+            </div>
+            <div>
+              <div class="font-bold text-sm text-gray-700 dark:text-white bengali-text">নোটিশ ও পোল</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 bengali-text">কোর্সের জন্য নোটিশ ও পোল তৈরি করুন</div>
+            </div>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400"></i>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  /**
+   * Live exam management: list of live exams with realtime updates.
+   */
+  showLiveExamManagement() {
+    if (!AppState.selectedGroup) {
+      Teacher.selectGroupView?.('management');
+      return;
+    }
+
+    document.getElementById('floating-math-btn')?.classList.add('hidden');
+    document.getElementById('math-symbols-panel')?.classList.remove('show');
+
+    const app = document.getElementById('app-container');
+    app.innerHTML = `
+    <div class="pb-6">
+      <div class="flex items-center gap-3 mb-6">
+        <button onclick="Teacher.managementView()" class="text-xs font-bold text-gray-500 hover:text-indigo-600 flex items-center gap-1 bg-white dark:bg-gray-800 border dark:border-gray-700 px-3 py-2 rounded-lg transition bengali-text">
+          <i class="fas fa-arrow-left"></i> ফিরে যান
+        </button>
+        <h2 class="text-2xl font-bold font-en dark:text-white bengali-text">লাইভ পরীক্ষা ব্যবস্থাপনা</h2>
+      </div>
+
+      <!-- Current course info -->
+      <div id="live-mgmt-group-info" class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border dark:border-gray-700 mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600">
+            <i class="fas fa-book"></i>
+          </div>
+          <div>
+            <span class="font-bold dark:text-white">${AppState.selectedGroup.name}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">কোর্স কোড: ${AppState.selectedGroup.groupCode || ''}</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="live-exams-list-container" class="space-y-4">
+        <div class="text-center p-10"><div class="quick-loader mx-auto"></div></div>
+      </div>
+    </div>`;
+
+    // Real-time query for live, active (non-draft, non-cancelled, not published) exams
+    const q = query(
+      collection(db, "exams"),
+      where("groupId", "==", AppState.selectedGroup.id),
+      where("type", "==", "live"),
+      where("resultPublished", "==", false),
+      where("cancelled", "!=", true),
+      where("isDraft", "==", false)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const container = document.getElementById('live-exams-list-container');
+      if (!container) return;
+
+      let html = '';
+      snap.forEach(doc => {
+        const exam = { id: doc.id, ...doc.data() };
+        if (exam.isDraft) return;
+
+        const startTime = moment(exam.startTime).format('lll');
+        const endTime = moment(exam.endTime).format('lll');
+
+        html += `
+          <div class="live-exam-card bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm">
+            <div class="flex items-start gap-3 mb-3">
+              <div class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center text-red-600 text-sm flex-shrink-0">
+                <i class="fas fa-video"></i>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-bold dark:text-white bengali-text">${exam.title}</h3>
+                <p class="text-xs text-gray-500 bengali-text">${exam.subject || 'কোনো বিষয় নেই'} - ${exam.chapter || 'কোনো অধ্যায় নেই'}</p>
+              </div>
+            </div>
+            <div class="text-[10px] text-gray-400 mb-3 pl-13">
+              <i class="far fa-calendar-alt mr-1"></i> শুরু: ${startTime} <br>
+              <i class="far fa-clock mr-1"></i> শেষ: ${endTime}
+            </div>
+            <div class="flex gap-2">
+              <button onclick="Teacher.stopLiveExam('${exam.id}')" class="flex-1 bg-red-600 text-white py-2 rounded-lg text-xs font-bold bengali-text hover:bg-red-700 transition">
+                <i class="fas fa-ban mr-1"></i> বাতিল
+              </button>
+              <button onclick="Teacher.extendExamTime('${exam.id}')" class="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-xs font-bold bengali-text hover:bg-emerald-700 transition">
+                <i class="fas fa-clock mr-1"></i> সময় বাড়ান
+              </button>
+              <button onclick="Teacher.publish('${exam.id}')" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold bengali-text hover:bg-indigo-700 transition">
+                <i class="fas fa-bullhorn mr-1"></i> প্রকাশ
+              </button>
+            </div>
+          </div>`;
+      });
+
+      container.innerHTML = html || '<div class="text-center p-10 text-gray-400 bengali-text">কোনো সক্রিয় লাইভ পরীক্ষা নেই।</div>';
+    });
+
+    unsubscribes.push(unsub);
+  }
+};
+
+// Attach to Teacher object for consistent access
+Teacher.managementView = ManagementLogic.showManagementView;
+Teacher.liveExamManagementView = ManagementLogic.showLiveExamManagement;
