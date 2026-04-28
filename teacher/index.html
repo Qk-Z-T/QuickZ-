@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickZ | Teacher Panel</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            primary: '#1a1f2e',
+                            secondary: '#242938',
+                            tertiary: '#2d3347'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bengali Font -->
+    <link rel="stylesheet" href="https://fonts.maateen.me/solaiman-lipi/font.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.maateen.me/solaiman-lipi/font.css"></noscript>
+
+    <!-- SweetAlert2 & Moment.js -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+    <!-- MathJax configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                packages: ['base', 'ams', 'noerrors', 'noundefined']
+            },
+            svg: { fontCache: 'global' },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+    <!-- Shared CSS -->
+    <link rel="stylesheet" href="../src/shared/styles/global.css">
+    <link rel="stylesheet" href="../src/shared/styles/animations.css">
+
+    <!-- Teacher-specific inline styles (only what Tailwind cannot handle) -->
+    <style>
+        /* Sidebar & Layout */
+        .sidebar {
+            width: 240px; min-height: 100vh; background: white; border-right: 1px solid #e2e8f0;
+            position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .dark .sidebar, .theme-dark .sidebar { background: #111111; border-right-color: #333333; }
+        .sidebar-logo { padding: 18px 16px 14px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; }
+        .sidebar-nav { flex: 1; padding: 10px 8px; overflow-y: auto; }
+        .sidebar-nav-item {
+            display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
+            cursor: pointer; transition: all 0.2s; color: #64748b; font-weight: 600; font-size: 13.5px; margin-bottom: 3px;
+        }
+        .sidebar-nav-item:hover { background: #f8fafc; color: #4f46e5; }
+        .dark .sidebar-nav-item:hover { background: #222222; color: #818cf8; }
+        .sidebar-nav-item.active { background: #eef2ff; color: #4f46e5; }
+        .dark .sidebar-nav-item.active { background: #1e1b4b; color: #818cf8; }
+        .sidebar-bottom { padding: 10px 8px; border-top: 1px solid #e2e8f0; }
+        .main-content-area { margin-left: 240px; flex: 1; min-height: 100vh; background: #f8fafc; }
+        .dark .main-content-area { background: #0a0a0a; }
+        .top-bar {
+            position: sticky; top: 0; z-index: 50; background: white; border-bottom: 1px solid #e2e8f0;
+            padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .dark .top-bar { background: #111111; border-bottom-color: #333333; }
+        .page-content { flex: 1; padding: 28px; }
+
+        /* Floating Math Button */
+        .floating-math-btn {
+            position: fixed; top: 80px; right: 30px; background: #4f46e5; color: white; border: none;
+            border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+            z-index: 1000; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: all 0.3s;
+        }
+        .floating-math-btn:hover { background: #4338ca; transform: scale(1.1); }
+
+        /* Three-dot menu */
+        .three-dot-btn { padding: 4px 8px; cursor: pointer; background: transparent; border: none; }
+        .dot-menu-dropdown {
+            position: absolute; top: 100%; right: 0; background: white; border: 1px solid #e2e8f0;
+            border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 1000; min-width: 160px; display: none;
+        }
+        .dot-menu-dropdown.show { display: block; }
+        .menu-item { padding: 10px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .menu-item:hover { background: #f8fafc; }
+
+        /* Group switcher */
+        .group-switcher-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: all 0.2s; }
+        .group-switcher-item:hover { background: #f8fafc; }
+        .group-switcher-item.active { background: #4f46e5; color: white; }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.mobile-open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.2); }
+            .main-content-area { margin-left: 0; }
+            .mobile-menu-btn { display: flex !important; }
+            .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+            .mobile-overlay.show { display: block; }
+        }
+        @media (min-width: 901px) {
+            .mobile-menu-btn { display: none !important; }
+        }
+    </style>
+</head>
+<body class="text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-black">
+
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen" style="background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);">
+        <div class="splash-logo">
+            <span class="text-white">Quick</span><span class="text-emerald-500">Z</span>
+        </div>
+        <div class="splash-subtitle" style="color:#94a3b8;">The ultimate exam platform</div>
+        <div class="splash-loader" style="border-color: rgba(255,255,255,0.1); border-top-color: #10b981;"></div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="fixed inset-0 z-50 hidden flex" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
+        <div class="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%);">
+            <div style="text-align:center;color:white;">
+                <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 24px;">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <h1 style="font-family:'Outfit',sans-serif;font-weight:800;font-size:42px;">Quick<span style="color:#a5f3fc;">Z</span></h1>
+                <p style="font-size:16px;opacity:0.85;margin-bottom:32px;">The Ultimate Exam Platform</p>
+            </div>
+        </div>
+        <div class="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 lg:p-12">
+            <div style="width:100%;max-width:380px;">
+                <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:36px;">
+                    <h2 style="color:white;font-weight:700;font-size:22px;margin-bottom:4px;font-family:'Outfit',sans-serif;">Teacher Login</h2>
+                    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:28px;">Sign in to your teacher account</p>
+                    <div style="display:flex;flex-direction:column;gap:14px;">
+                        <div>
+                            <input type="email" id="t-email" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;outline:none;color:white;font-size:14px;" placeholder="teacher@example.com">
+                        </div>
+                        <div>
+                            <div style="position:relative;">
+                                <input type="password" id="t-pass" style="width:100%;padding:12px 44px 12px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;outline:none;color:white;font-size:14px;" placeholder="••••••••">
+                                <i class="fas fa-eye" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);cursor:pointer;font-size:14px;" onclick="AuthUI.togglePass('t-pass', this)"></i>
+                            </div>
+                        </div>
+                        <button onclick="Auth.teacherLogin()" id="teacher-login-btn" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;">
+                            Sign In
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="mobile-overlay" onclick="Teacher.closeMobileSidebar()"></div>
+
+    <!-- Website Layout Wrapper -->
+    <div id="website-layout" class="hidden" style="min-height:100vh;">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="main-sidebar">
+            <div class="sidebar-logo">
+                <div style="width:36px;height:36px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:15px;"><i class="fas fa-chalkboard-teacher"></i></div>
+                <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:19px;color:#1e293b;" class="dark:text-white">Quick<span style="color:#10b981">Z</span></span>
+            </div>
+
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;">Active Course</div>
+                <div class="group-switcher relative" id="group-switcher-container">
+                    <button class="group-switcher-btn w-full flex items-center justify-between px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold" onclick="Teacher.toggleGroupSwitcher()">
+                        <span class="flex items-center gap-2"><i class="fas fa-book text-xs"></i><span id="current-group-name" class="truncate max-w-[130px]">Select Course</span></span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="group-switcher-dropdown absolute top-full left-0 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto hidden" id="group-switcher-dropdown"></div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-nav-item nav-item" id="nav-home" onclick="Router.teacher('home')"><i class="fas fa-home"></i><span>Homepage</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-create" onclick="Router.teacher('create')"><i class="fas fa-plus-circle"></i><span>Create Exam</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-rank" onclick="Router.teacher('rank')"><i class="fas fa-trophy"></i><span>Rankings</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-folders" onclick="Router.teacher('folders')"><i class="fas fa-book-open"></i><span>Library</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-management" onclick="Router.teacher('management')"><i class="fas fa-tasks"></i><span>Management</span></div>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="sidebar-nav-item" onclick="Teacher.viewProfile()"><i class="fas fa-user"></i><span>My Profile</span></div>
+                <div class="sidebar-nav-item" onclick="Teacher.changePassword()"><i class="fas fa-key"></i><span>Change Password</span></div>
+                <div class="sidebar-nav-item" style="color:#ef4444;" onclick="Auth.confirmLogout()"><i class="fas fa-power-off"></i><span>Logout</span></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content-area">
+            <div class="top-bar" id="teacher-header">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button class="mobile-menu-btn" style="background:transparent;border:none;font-size:20px;color:#64748b;cursor:pointer;padding:4px;" onclick="Teacher.toggleMobileSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="top-bar-title" id="page-title">Teacher <span style="color:#4f46e5">Panel</span></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="top-bar-user-name" class="text-xs text-gray-500 dark:text-gray-400 bengali-text"></span>
+                    <div onclick="Teacher.viewProfile()" class="cursor-pointer w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm shadow"><i class="fas fa-user-tie"></i></div>
+                </div>
+            </div>
+            <main id="app-container" class="page-content hidden"></main>
+        </div>
+    </div>
+
+    <!-- Floating Math Button -->
+    <button id="floating-math-btn" class="floating-math-btn hidden">
+        <i class="fas fa-square-root-alt"></i>
+    </button>
+
+    <!-- Math Symbols Panel -->
+    <div id="math-symbols-panel" class="fixed top-36 right-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 z-50 w-80 max-h-96 overflow-y-auto hidden">
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-red-500" onclick="MathEditor.closePanel()"><i class="fas fa-times"></i></button>
+        <div class="grid grid-cols-5 gap-1">
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('+')">+</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('-')">-</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\times')">×</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\div')">÷</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('=')">=</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\frac{}{}')">½</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\sqrt{}')">√</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('^{}')">x²</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('_{}')">x₁</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\int')">∫</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\sum')">∑</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\alpha')">α</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\beta')">β</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\pi')">π</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\theta')">θ</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\to')">→</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\leq')">≤</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\geq')">≥</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\infty')">∞</button>
+            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\therefore')">∴</button>
+        </div>
+    </div>
+
+    <!-- Main Application Script -->
+    <script src="../src/shared/services/db.service.js" defer></script>
+    <script type="module" src="../src/teacher/app.js"></script>
+</body>
+</html>
