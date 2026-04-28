@@ -83,7 +83,6 @@ onAuthStateChanged(auth, async (user) => {
     AppState.user = user;
 
     if (!AppState.currentUser) {
-      // First login – load profile from Firestore
       try {
         if (navigator.onLine) await Auth.loadTeacherProfile(user.uid);
         initRealTimeSync();
@@ -94,13 +93,11 @@ onAuthStateChanged(auth, async (user) => {
       }
       hideSplash();
     } else {
-      // Already booted – silently refresh in background
       if (navigator.onLine) {
         Auth.loadTeacherProfile(user.uid).catch(e => console.warn(e));
       }
     }
   } else {
-    // Firebase user signed out
     const explicit = localStorage.getItem('explicit_logout') === 'true';
     if (explicit) {
       AppState.user = null;
@@ -108,7 +105,6 @@ onAuthStateChanged(auth, async (user) => {
       Router.showLogin();
       hideSplash();
     } else {
-      // Prevent auto logout – keep memory state
       console.warn('🛡️ Blocked Firebase Auto-Logout. Keeping session alive.');
       if (!AppState.currentUser) {
         Router.showLogin();
