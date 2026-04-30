@@ -1,5 +1,5 @@
 // src/teacher/app.js
-// Teacher portal entry point – fast boot, auth, realtime sync, offline
+// Teacher portal entry point (fixed – DashboardLogic imported)
 
 import { AppState } from './core/state.js';
 import { Auth, AuthUI } from './core/auth.js';
@@ -7,8 +7,16 @@ import { Router } from './core/router.js';
 import { Teacher } from './teacher-core.js';
 import { initRealTimeSync, clearListeners } from './features/realtime-sync/sync.logic.js';
 import { OfflineSync } from '../shared/services/offline-sync.js';
+import { DashboardLogic } from './features/dashboard/dashboard.logic.js';
 
-// ---------- Feature modules (attach methods to Teacher) ----------
+// Attach dashboard methods to Teacher
+Teacher.homeView = DashboardLogic.homeView;
+Teacher.renderActiveLiveExamOnHome = DashboardLogic.renderActiveLiveExamOnHome;
+Teacher.generatePermissionKeyFromHome = DashboardLogic.generatePermissionKeyFromHome;
+Teacher.quickEditJoinMethod = DashboardLogic.quickEditJoinMethod;
+Teacher.copyPermissionKey = DashboardLogic.copyPermissionKey;
+
+// Feature modules (attach their own methods to Teacher)
 import './features/exam-create/create.logic.js';
 import './features/exam-create/create.view.js';
 import './features/library/library.logic.js';
@@ -16,14 +24,13 @@ import './features/library/library.view.js';
 import './features/rankings/rankings.logic.js';
 import './features/rankings/rankings.view.js';
 import './features/management/management.logic.js';
+import './features/management/management.view.js';
 import './features/notice-poll/notice.logic.js';
 import './features/notice-poll/notice.view.js';
 import './features/groups/groups.logic.js';
 import './features/groups/groups.view.js';
 import './features/profile/profile.logic.js';
 import './features/profile/profile.view.js';
-
-// Math editor self‑initialises on DOMContentLoaded
 import './features/math-editor/editor.logic.js';
 
 // ---------- Globals ----------
@@ -42,7 +49,7 @@ if (!window.folderStructure) window.folderStructure = { live: [], mock: [], unca
 window.currentFocusedTextarea = null;
 window.questionMode = 'manual';
 
-// ---------- Dark mode ----------
+// Dark mode
 if (localStorage.getItem('darkMode') === 'true') {
   document.documentElement.classList.add('theme-dark');
   AppState.darkMode = true;
@@ -51,7 +58,7 @@ if (localStorage.getItem('darkMode') === 'true') {
   AppState.darkMode = false;
 }
 
-// ---------- Fast boot from cache ----------
+// Fast boot from cache
 const cachedTeacherData = localStorage.getItem('teacher_data');
 const isExplicitLogout = localStorage.getItem('explicit_logout') === 'true';
 
@@ -66,7 +73,7 @@ if (cachedTeacherData && !isExplicitLogout) {
   Router.initTeacher();
 }
 
-// ---------- Firebase auth observer ----------
+// Firebase auth observer
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 const auth = getAuth();
 
@@ -85,12 +92,11 @@ onAuthStateChanged(auth, async (user) => {
     if (!AppState.currentUser) {
       try {
         if (navigator.onLine) await Auth.loadTeacherProfile(user.uid);
-        initRealTimeSync();
-        Router.initTeacher();
       } catch (e) {
         console.error('Profile load error:', e);
-        Router.initTeacher();
       }
+      initRealTimeSync();
+      Router.initTeacher();
       hideSplash();
     } else {
       if (navigator.onLine) {
