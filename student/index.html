@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>QuickZ | Student Portal</title>
@@ -18,9 +17,8 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Bengali Font -->
-    <link rel="stylesheet" href="https://fonts.maateen.me/solaiman-lipi/font.css" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.maateen.me/solaiman-lipi/font.css"></noscript>
+    <!-- Google Fonts (Bengali + English) -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -46,12 +44,12 @@
     </script>
 
     <!-- Shared CSS -->
-    <link rel="stylesheet" href="../src/student/styles.css">
     <link rel="stylesheet" href="../src/shared/styles/global.css">
     <link rel="stylesheet" href="../src/shared/styles/animations.css">
+    <link rel="stylesheet" href="../src/student/styles.css">
 
-    <!-- Student-specific inline styles (if any) -->
     <style>
+        /* Fallback for form elements */
         .form-label { display: block; font-size: 14px; font-weight: 600; color: var(--text-secondary, #475569); margin-bottom: 5px; }
         .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-light, #e2e8f0); border-radius: 8px; font-size: 14px; background: var(--input-bg, #fff); color: var(--text-primary, #1e293b); }
         .form-input:focus { outline: none; border-color: #4f46e5; }
