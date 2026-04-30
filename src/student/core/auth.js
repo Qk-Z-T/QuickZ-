@@ -1,5 +1,5 @@
 // src/student/core/auth.js
-// Student authentication module
+// Student authentication module (fixed)
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState } from './state.js';
@@ -25,53 +25,57 @@ export const AuthUI = {
   togglePass(id, el) {
     const input = document.getElementById(id);
     if (input.type === 'password') {
-      input.type = 'text';
-      el.classList.remove('fa-eye');
-      el.classList.add('fa-eye-slash');
+      input.type = 'text'; el.classList.remove('fa-eye'); el.classList.add('fa-eye-slash');
     } else {
-      input.type = 'password';
-      el.classList.remove('fa-eye-slash');
-      el.classList.add('fa-eye');
+      input.type = 'password'; el.classList.remove('fa-eye-slash'); el.classList.add('fa-eye');
     }
   },
-
   showLoginLoading(btnId) {
     const btn = document.getElementById(btnId);
-    if (btn) {
-      btn.classList.add('loading');
-      btn.disabled = true;
-      const loaderContainer = btn.querySelector('.loader-container');
-      if (loaderContainer) loaderContainer.classList.remove('hidden');
-    }
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
   },
-
   hideLoginLoading(btnId) {
     const btn = document.getElementById(btnId);
-    if (btn) {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-      const loaderContainer = btn.querySelector('.loader-container');
-      if (loaderContainer) loaderContainer.classList.add('hidden');
-    }
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
   },
-
   showSignupForm() {
     document.getElementById('signup-modal').classList.remove('hidden');
   },
-
   closeSignupForm() {
     document.getElementById('signup-modal').classList.add('hidden');
   },
-
   showAuthScreen() {
-    document.getElementById('splash-screen').classList.add('hidden');
-    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('splash-screen')?.classList.add('hidden');
+    document.getElementById('auth-screen')?.classList.remove('hidden');
   },
-
   hideAuthScreen() {
-    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('auth-screen')?.classList.add('hidden');
   }
 };
+window.AuthUI = AuthUI;
+
+/**
+ * Helper: load teacher names for current teacherCodes.
+ */
+async function loadTeacherNames() {
+  if (!AppState.teacherCodes || AppState.teacherCodes.length === 0) return;
+  try {
+    const names = {};
+    for (const tc of AppState.teacherCodes) {
+      const q = query(collection(db, "teachers"), where("teacherCode", "==", tc.code));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        names[tc.code] = data.fullName || data.name || "Unknown Teacher";
+      } else {
+        names[tc.code] = "Unknown Teacher";
+      }
+    }
+    AppState.teacherNames = names;
+  } catch (e) {
+    console.error('loadTeacherNames error:', e);
+  }
+}
 
 export const Auth = {
   async studentLogin() {
@@ -79,8 +83,7 @@ export const Auth = {
     try {
       const email = document.getElementById('s-email').value.trim();
       const password = document.getElementById('s-pass').value.trim();
-
-      if (!email || !password) {
+      if (!email || !password) { 
         Swal.fire('ত্রুটি', 'ইমেইল ও পাসওয়ার্ড দিন', 'error');
         AuthUI.hideLoginLoading('student-login-btn');
         return;
@@ -106,37 +109,42 @@ export const Auth = {
         localStorage.setItem('userProfile', JSON.stringify(userData));
         localStorage.setItem('userLoggedIn', 'true');
 
+        // Migrate teacherCodes to object if needed
         let teacherCodes = userData.teacherCodes || [];
         if (teacherCodes.length > 0 && typeof teacherCodes[0] === 'string') {
           teacherCodes = teacherCodes.map(code => ({ code, active: false }));
           if (teacherCodes.length > 0) teacherCodes[0].active = true;
           await updateDoc(doc(db, "students", cred.user.uid), { teacherCodes });
         }
-
         AppState.teacherCodes = teacherCodes;
         AppState.activeTeacherCode = teacherCodes.find(tc => tc.active)?.code || null;
         AppState.groupCode = userData.groupCode || null;
         AppState.hasGroupCode = !!userData.groupCode;
         AppState.joinedGroups = userData.joinedGroups || [];
 
-        if (!AppState.activeGroupId && AppState.joinedGroups.length > 0) {
+        // Restore active group
+        const storedGroupId = localStorage.getItem('activeGroupId');
+        if (storedGroupId && AppState.joinedGroups.find(g => g.groupId === storedGroupId)) {
+          AppState.activeGroupId = storedGroupId;
+        } else if (AppState.joinedGroups.length > 0) {
           AppState.activeGroupId = AppState.joinedGroups[0].groupId;
           localStorage.setItem('activeGroupId', AppState.activeGroupId);
+        } else {
+          AppState.activeGroupId = null;
         }
 
-        if (AppState.teacherCodes.length > 0) {
-          await loadTeacherNames();
-        }
+        // Load teacher names
+        if (AppState.teacherCodes.length > 0) await loadTeacherNames();
 
+        // Route based on profile completion
         if (!AppState.profileCompleted) {
           Router.showProfileForm();
         } else {
           Router.initStudent();
         }
-
         AuthUI.hideLoginLoading('student-login-btn');
       } else {
-        // New user (unlikely but handle)
+        // No student document – create one
         await setDoc(doc(db, "students", cred.user.uid), {
           uid: cred.user.uid,
           email: email,
@@ -154,7 +162,6 @@ export const Auth = {
           disabled: false,
           joined: new Date()
         });
-
         AppState.profileCompleted = false;
         Router.showProfileForm();
         AuthUI.hideLoginLoading('student-login-btn');
@@ -167,9 +174,9 @@ export const Auth = {
   },
 
   async studentSignup() {
-    const email = document.getElementById('signup-email').value.trim();
-    const password = document.getElementById('signup-password').value.trim();
-    const confirmPassword = document.getElementById('signup-confirm').value.trim();
+    const email = document.getElementById('signup-email')?.value.trim();
+    const password = document.getElementById('signup-password')?.value.trim();
+    const confirmPassword = document.getElementById('signup-confirm')?.value.trim();
 
     if (!email || !password || !confirmPassword) {
       Swal.fire('ত্রুটি', 'সব তথ্য পূরণ করুন', 'error');
@@ -222,12 +229,12 @@ export const Auth = {
   },
 
   confirmLogout() {
-    Swal.fire({
-      title: 'লগআউট?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'হ্যাঁ',
-      confirmButtonColor: '#ef4444'
+    Swal.fire({ 
+      title: 'লগআউট?', 
+      icon: 'warning', 
+      showCancelButton: true, 
+      confirmButtonText: 'হ্যাঁ', 
+      confirmButtonColor: '#ef4444' 
     }).then((r) => { if (r.isConfirmed) this.logout(); });
   },
 
@@ -240,28 +247,4 @@ export const Auth = {
     location.reload();
   }
 };
-
-// Helper: load teacher names for all teacher codes
-async function loadTeacherNames() {
-  try {
-    const teacherNames = {};
-    for (const tc of AppState.teacherCodes) {
-      const teachersQuery = query(collection(db, "teachers"), where("teacherCode", "==", tc.code));
-      const querySnapshot = await getDocs(teachersQuery);
-      if (!querySnapshot.empty) {
-        const teacherDoc = querySnapshot.docs[0];
-        const teacherData = teacherDoc.data();
-        teacherNames[tc.code] = teacherData.fullName || teacherData.name || "Unknown Teacher";
-      } else {
-        teacherNames[tc.code] = "Unknown Teacher";
-      }
-    }
-    AppState.teacherNames = teacherNames;
-  } catch (error) {
-    console.error('Error loading teacher names:', error);
-  }
-}
-
-// Expose globally for onclick handlers
-window.AuthUI = AuthUI;
 window.Auth = Auth;
