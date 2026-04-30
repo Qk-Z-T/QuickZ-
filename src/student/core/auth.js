@@ -1,9 +1,8 @@
 // src/student/core/auth.js
-// Student authentication module (fixed)
+// Student authentication module – uses window.Router to avoid circular dependency
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState } from './state.js';
-import { Router } from './router.js';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -55,7 +54,7 @@ export const AuthUI = {
 window.AuthUI = AuthUI;
 
 /**
- * Helper: load teacher names for current teacherCodes.
+ * Fetch teacher names for current teacherCodes.
  */
 async function loadTeacherNames() {
   if (!AppState.teacherCodes || AppState.teacherCodes.length === 0) return;
@@ -109,7 +108,7 @@ export const Auth = {
         localStorage.setItem('userProfile', JSON.stringify(userData));
         localStorage.setItem('userLoggedIn', 'true');
 
-        // Migrate teacherCodes to object if needed
+        // Migrate teacherCodes to object format if needed
         let teacherCodes = userData.teacherCodes || [];
         if (teacherCodes.length > 0 && typeof teacherCodes[0] === 'string') {
           teacherCodes = teacherCodes.map(code => ({ code, active: false }));
@@ -123,24 +122,19 @@ export const Auth = {
         AppState.joinedGroups = userData.joinedGroups || [];
 
         // Restore active group
-        const storedGroupId = localStorage.getItem('activeGroupId');
-        if (storedGroupId && AppState.joinedGroups.find(g => g.groupId === storedGroupId)) {
-          AppState.activeGroupId = storedGroupId;
-        } else if (AppState.joinedGroups.length > 0) {
+        if (!AppState.activeGroupId && AppState.joinedGroups.length > 0) {
           AppState.activeGroupId = AppState.joinedGroups[0].groupId;
           localStorage.setItem('activeGroupId', AppState.activeGroupId);
-        } else {
-          AppState.activeGroupId = null;
         }
 
         // Load teacher names
         if (AppState.teacherCodes.length > 0) await loadTeacherNames();
 
-        // Route based on profile completion
+        // Use window.Router to avoid circular import
         if (!AppState.profileCompleted) {
-          Router.showProfileForm();
+          window.Router.showProfileForm();
         } else {
-          Router.initStudent();
+          window.Router.initStudent();
         }
         AuthUI.hideLoginLoading('student-login-btn');
       } else {
@@ -163,7 +157,7 @@ export const Auth = {
           joined: new Date()
         });
         AppState.profileCompleted = false;
-        Router.showProfileForm();
+        window.Router.showProfileForm();
         AuthUI.hideLoginLoading('student-login-btn');
       }
     } catch (e) {
@@ -220,7 +214,7 @@ export const Auth = {
 
       AuthUI.closeSignupForm();
       Swal.fire('সফল', 'অ্যাকাউন্ট তৈরি হয়েছে! প্রোফাইল সম্পূর্ণ করুন।', 'success').then(() => {
-        Router.showProfileForm();
+        window.Router.showProfileForm();
       });
     } catch (e) {
       console.error(e);
