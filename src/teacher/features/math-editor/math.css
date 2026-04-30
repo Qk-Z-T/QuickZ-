@@ -1,0 +1,96 @@
+/* src/teacher/features/math-editor/math.css
+   Math symbol panel positioning & minor tweaks (only needed when Tailwind is not enough) */
+
+/* Fixed positioning for math panel (shown when clicked) */
+.math-symbols-panel.fixed-position {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  z-index: 9999;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Overlay for math preview on textareas */
+.math-render-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  padding: 12px;
+  overflow: auto;
+  background: white;
+  border-radius: 8px;
+}
+.dark .math-render-overlay,
+.theme-dark .math-render-overlay {
+  background: #111111;
+}
+
+/* Math mode textarea hides original text */
+textarea.math-mode {
+  color: transparent !important;
+  caret-color: black;
+}
+.dark textarea.math-mode,
+.theme-dark textarea.math-mode {
+  caret-color: white;
+}
+
+/* Symbol buttons inside the panel */
+.symbol-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: center;
+  transition: all 0.2s;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dark .symbol-btn,
+.theme-dark .symbol-btn {
+  background: #222222;
+  border-color: #333333;
+  color: #e2e8f0;
+}
+.symbol-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+.dark .symbol-btn:hover,
+.theme-dark .symbol-btn:hover {
+  background: #333333;
+}
+
+/* Floating math button */
+.floating-math-btn {
+  position: fixed;
+  top: 80px;
+  right: 30px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.3s;
+}
+.floating-math-btn:hover {
+  background: #4338ca;
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+}
