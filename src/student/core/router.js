@@ -1,6 +1,6 @@
 // src/student/core/router.js
 // Student portal routing – boxed menu items, auto‑close mobile drawer,
-// NO teacher code required during signup/profile completion
+// NO teacher code required, missing course redirects to courses page
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState, clearListeners, refreshExamCache } from './state.js';
@@ -282,7 +282,6 @@ export const Router = {
           return;
         }
 
-        // No teacher code required anymore
         const user = auth.currentUser;
         if (!user) return;
 
@@ -295,7 +294,7 @@ export const Router = {
           collegeName: collegeName || "",
           classLevel,
           admissionStream,
-          teacherCodes: [],                   // empty initially
+          teacherCodes: [],          // no teacher code needed
           profileCompleted: true,
           updatedAt: new Date()
         };
@@ -332,12 +331,23 @@ export const Router = {
       return;
     }
 
-    // Removed the check for teacherCodes length; no longer required to add a teacher code before using the app
+    // No teacher code required; skip the check
 
     const exceptions = ['dashboard', 'profile', 'management', 'courses', 'notices'];
     if (!exceptions.includes(p) && !AppState.activeGroupId) {
-      Swal.fire({ title: 'কোর্সে জয়েন নেই', text: 'এই ফিচারটি ব্যবহার করতে আগে একটি কোর্সে জয়েন করুন।', icon: 'warning', confirmButtonText: 'জয়েন করুন' })
-        .then(() => StudentDashboard.showGroupCodeModal());
+      // Instead of group code modal, navigate to courses
+      Swal.fire({
+        title: 'কোর্সে জয়েন নেই',
+        text: 'এই ফিচারটি ব্যবহার করতে আগে একটি কোর্সে জয়েন করুন।',
+        icon: 'warning',
+        confirmButtonText: 'কোর্স খুঁজুন',
+        showCancelButton: true,
+        cancelButtonText: 'বাতিল'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Router.student('courses');
+        }
+      });
       return;
     }
 
