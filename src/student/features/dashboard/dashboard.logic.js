@@ -1,13 +1,14 @@
 // src/student/features/dashboard/dashboard.logic.js
-// Student dashboard, live & mock exam listing logic
+// Student dashboard, live & mock exam listing logic, rankings, notices
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes, pastSubjectFilter, lastMockContext } from '../../core/state.js';
 import { Router } from '../../core/router.js';
 import { loadMathJax } from '../../../shared/utils/dom-helper.js';
 import { MathHelper } from '../../../shared/utils/math-helper.js';
+import { renderRankRow } from '../../components/result-row.js';
 import {
-  doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot
+  doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // Helper: get content container
@@ -574,6 +575,127 @@ export const StudentDashboard = {
           </div>
         `).join('')}
       </div>`;
+  },
+
+  // ---- Rankings (NEW) ----
+  async loadRankings() {
+    if (!AppState.activeGroupId) {
+      Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
+      return;
+    }
+    const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
+    if (!contentEl) return;
+
+    try {
+      const uid = auth.currentUser.uid;
+      // Fetch published live exams
+      const snap = await getDocs(query(
+        collection(db, "exams"),
+        where("groupId", "==", AppState.activeGroupId),
+        where("type", "==", "live"),
+        where("resultPublished", "==", true)
+      ));
+      const exams = [];
+      snap.forEach(d => exams.push({ id: d.id, ...d.data() }));
+
+      if (exams.length === 0) {
+        contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2><p class="text-gray-500">এখনো কোনো র‍্যাংক প্রকাশিত হয়নি</p></div>`;
+        return;
+      }
+
+      // For simplicity, display latest published exam ranking (can be extended to select exam)
+      const exam = exams[exams.length - 1]; // latest
+      const attemptsSnap = await getDocs(query(
+        collection(db, "attempts"),
+        where("examId", "==", exam.id),
+        orderBy("score", "desc")
+      ));
+      const attempts = [];
+      attemptsSnap.forEach(d => attempts.push({ id: d.id, ...d.data() }));
+
+      // Build rank rows
+      let rankHTML = '';
+      attempts.forEach((att, i) => {
+        const studentInfo = { college: '', school: '' }; // we don't fetch full profile here, optional
+        rankHTML += renderRankRow(att, i, studentInfo, uid);
+      });
+
+      contentEl.innerHTML = `
+        <div class="p-5 pb-20">
+          <h2 class="text-xl font-bold mb-2">${exam.title} - র‍্যাংকিং</h2>
+          <p class="text-xs text-gray-500 mb-4">${attempts.length} জন অংশগ্রহণকারী</p>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">
+            ${rankHTML || '<div class="p-5 text-center text-gray-500">কোনো র‍্যাংক নেই</div>'}
+          </div>
+        </div>`;
+    } catch (e) {
+      console.error(e);
+      contentEl.innerHTML = '<div class="p-5 text-red-500">র‍্যাংকিং লোড করতে ত্রুটি</div>';
+    }
+  },
+
+  // ---- Notices (NEW) ----
+  async loadNotices() {
+    if (!AppState.activeGroupId) {
+      Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
+      return;
+    }
+    const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
+    if (!contentEl) return;
+
+    try {
+      const uid = auth.currentUser.uid;
+      const snap = await getDocs(query(
+        collection(db, "notices"),
+        where("groupId", "==", AppState.activeGroupId),
+        orderBy("createdAt", "desc")
+      ));
+      const notices = [];
+      snap.forEach(d => notices.push({ id: d.id, ...d.data() }));
+
+      // Mark as viewed
+      for (const n of notices) {
+        const noticeRef = doc(db, "notices", n.id);
+        const currentViews = n.views || {};
+        if (!currentViews[uid]) {
+          currentViews[uid] = new Date();
+          await updateDoc(noticeRef, { views: currentViews }).catch(() => {});
+        }
+      }
+
+      let html = '';
+      notices.forEach(n => {
+        const isPoll = n.type === 'poll';
+        const viewCount = Object.keys(n.views || {}).length;
+        let pollSection = '';
+        if (isPoll && n.options) {
+          const votes = n.votes || {};
+          const totalVotes = Object.keys(votes).length;
+          pollSection = `<div class="mt-2 text-sm"><b>ভোট:</b> ${totalVotes}</div>`;
+        }
+
+        html += `
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border mb-3">
+            <div class="flex justify-between">
+              <span class="text-xs bg-indigo-100 px-2 py-1 rounded">${isPoll ? 'পোল' : 'নোটিশ'}</span>
+              <span class="text-xs text-gray-500">${moment(n.createdAt?.toDate()).format('DD MMM, YYYY')}</span>
+            </div>
+            <h3 class="font-bold mt-2">${n.title}</h3>
+            ${n.content ? `<p class="text-sm mt-1">${n.content}</p>` : ''}
+            ${pollSection}
+            <div class="text-xs text-gray-400 mt-2"><i class="far fa-eye"></i> ${viewCount} জন দেখেছেন</div>
+          </div>`;
+      });
+
+      contentEl.innerHTML = `
+        <div class="p-5 pb-20">
+          <h2 class="text-xl font-bold mb-4">নোটিশ ও পোল</h2>
+          ${html || '<p class="text-gray-500">কোনো নোটিশ নেই</p>'}
+        </div>`;
+    } catch (e) {
+      console.error(e);
+      contentEl.innerHTML = '<div class="p-5 text-red-500">নোটিশ লোড করতে ত্রুটি</div>';
+    }
   }
 };
 
