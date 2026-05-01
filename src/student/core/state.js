@@ -68,16 +68,19 @@ export function toggleMobileDrawer() {
 
   if (!drawer) return;
 
-  const isClosed = drawer.classList.contains('-translate-x-full');
+  // The drawer is hidden when it has 'translate-x-full' (off‑screen to the right)
+  const isClosed = drawer.classList.contains('translate-x-full');
 
   if (isClosed) {
-    drawer.classList.remove('-translate-x-full');
+    // Open: slide in from right
+    drawer.classList.remove('translate-x-full');
     drawer.classList.add('translate-x-0');
     if (overlay) overlay.classList.remove('hidden');
     body.style.overflow = 'hidden';
   } else {
+    // Close: slide back to right
     drawer.classList.remove('translate-x-0');
-    drawer.classList.add('-translate-x-full');
+    drawer.classList.add('translate-x-full');
     if (overlay) overlay.classList.add('hidden');
     body.style.overflow = '';
   }
