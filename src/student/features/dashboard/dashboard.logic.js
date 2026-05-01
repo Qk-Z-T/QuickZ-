@@ -668,24 +668,97 @@ export const StudentDashboard = {
     if (!contentEl) return;
 
     try {
+      const uid = auth.currentUser.uid;
+
+      // 1. Get exam details
       const examSnap = await getDoc(doc(db, "exams", examId));
       if (!examSnap.exists()) {
         Swal.fire('Error', 'Exam not found', 'error');
         return this.loadRankings();
       }
       const exam = examSnap.data();
+      const totalMarks = exam.totalMarks || 0;
+      const duration = exam.duration || 0;
+      const examDate = exam.startTime
+        ? moment(exam.startTime).format('DD MMM, YYYY')
+        : moment(exam.createdAt?.toDate()).format('DD MMM, YYYY');
+      const examTime = exam.startTime
+        ? moment(exam.startTime).format('hh:mm A')
+        : 'N/A';
 
+      // 2. Get all real attempts (not practice, submitted)
       const attemptsSnap = await getDocs(query(
         collection(db, "attempts"),
         where("examId", "==", examId),
-        orderBy("score", "desc")
+        where("isPractice", "==", false)
       ));
-      const attempts = [];
-      attemptsSnap.forEach(d => attempts.push({ id: d.id, ...d.data() }));
 
-      const uid = auth.currentUser.uid;
+      // 3. Group by userId, keep only the FIRST submitted attempt (by submittedAt)
+      const userFirstAttempt = {};
+      attemptsSnap.forEach(doc => {
+        const att = { id: doc.id, ...doc.data() };
+        if (!att.submittedAt || att.score === undefined || att.score === null) return;
+
+        const existing = userFirstAttempt[att.userId];
+        if (!existing || att.submittedAt.toDate() < existing.submittedAt.toDate()) {
+          userFirstAttempt[att.userId] = att;
+        }
+      });
+
+      // 4. Convert to array and sort by score desc
+      const rankedList = Object.values(userFirstAttempt).map(att => ({
+        ...att,
+        score: parseFloat(att.score) || 0,
+        accuracy: 0, // placeholder
+        timeTakenSeconds: att.startedAt && att.submittedAt
+          ? Math.floor((att.submittedAt.toDate() - att.startedAt.toDate()) / 1000)
+          : 0
+      }));
+
+      rankedList.sort((a, b) => b.score - a.score);
+
+      // 5. Find current user's rank
+      let myRank = null;
+      rankedList.forEach((att, index) => {
+        if (att.userId === uid) {
+          myRank = index + 1;
+        }
+      });
+
+      // 6. Build glass summary card
+      const summaryHtml = `
+        <div class="glass-card p-5 rounded-2xl mb-6">
+          <h3 class="text-xl font-bold mb-2 dark:text-white">${exam.title}</h3>
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span class="text-gray-500 dark:text-gray-400"><i class="fas fa-star text-amber-400 mr-1"></i>মোট মার্ক:</span>
+              <span class="font-bold dark:text-white ml-1">${totalMarks}</span>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400"><i class="far fa-clock mr-1"></i>সময়:</span>
+              <span class="font-bold dark:text-white ml-1">${duration} মিনিট</span>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400"><i class="far fa-calendar-alt mr-1"></i>তারিখ:</span>
+              <span class="font-bold dark:text-white ml-1">${examDate}</span>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400"><i class="far fa-clock mr-1"></i>পরীক্ষার সময়:</span>
+              <span class="font-bold dark:text-white ml-1">${examTime}</span>
+            </div>
+            <div class="col-span-2 mt-2">
+              <span class="text-gray-500 dark:text-gray-400"><i class="fas fa-trophy mr-1"></i>আপনার র‍্যাংক:</span>
+              <span class="font-bold text-indigo-600 dark:text-indigo-400 text-lg ml-1">
+                ${myRank ? myRank + ' / ' + rankedList.length : 'অংশগ্রহণ করেননি'}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 7. Build rank rows
       let rankHTML = '';
-      attempts.forEach((att, i) => {
+      rankedList.forEach((att, i) => {
         const studentInfo = { college: '', school: '' };
         rankHTML += renderRankRow(att, i, studentInfo, uid);
       });
@@ -693,8 +766,7 @@ export const StudentDashboard = {
       contentEl.innerHTML = `
         <div class="p-5 pb-20">
           <button onclick="StudentDashboard.loadRankings()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> র‍্যাংকিং তালিকা</button>
-          <h2 class="text-xl font-bold mb-2">${exam.title} - র‍্যাংকিং</h2>
-          <p class="text-xs text-gray-500 mb-4">${attempts.length} জন অংশগ্রহণকারী</p>
+          ${summaryHtml}
           <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">
             ${rankHTML || '<div class="p-5 text-center text-gray-500">কোনো র‍্যাংক নেই</div>'}
           </div>
