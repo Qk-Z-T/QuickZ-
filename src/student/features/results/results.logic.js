@@ -4,8 +4,7 @@
 import { auth, db } from '../../../shared/config/firebase.js';
 import {
   AppState, ExamCache, unsubscribes,
-  currentResultPage, resultFilter, filteredQuestions,
-  resultTypeFilter, resultsSubjectFilter
+  currentResultPage, resultFilter, filteredQuestions
 } from '../../core/state.js';
 import { Router } from '../../core/router.js';
 import { loadMathJax } from '../../../shared/utils/dom-helper.js';
@@ -14,6 +13,10 @@ import { StarRating } from '../../core/state.js';
 import {
   doc, getDoc, collection, query, where, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+// Local mutable filter state (was imported but is read-only)
+let resultTypeFilter = 'live';
+let resultsSubjectFilter = 'all';
 
 export const ResultsManager = {
   async loadResults() {
