@@ -1,5 +1,5 @@
 /* src/student/styles.css */
-/* Student‑specific styles */
+/* Student‑specific styles – updated with glass cards for results */
 
 /* ---- Dashboard cards (old) ---- */
 .dashboard-card {
@@ -88,12 +88,12 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #1e293b;               /* dark text for light backgrounds */
+    color: #1e293b;
 }
 .dark .glass-exam-card {
     background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));
     border-color: rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;               /* light text for dark backgrounds */
+    color: #f1f5f9;
 }
 .glass-exam-card .dashboard-card-content {
     display: flex;
@@ -234,7 +234,7 @@
 .filter-btn.wrong.active { background: #ef4444; border-color: #ef4444; }
 .filter-btn.skipped.active { background: #f59e0b; border-color: #f59e0b; }
 
-/* ---- Compact summary cards ---- */
+/* ---- Compact summary cards (old) ---- */
 .compact-summary-card {
     background: var(--card-bg); border: 1px solid var(--border-light);
     border-radius: 16px; padding: 20px; margin-bottom: 20px;
@@ -332,4 +332,32 @@
 .blue-course-card .badge-on-blue {
     background: rgba(255,255,255,0.2);
     color: white;
+}
+
+/* ---- Glass card styles for results (NEW) ---- */
+.glass-card {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #1e293b;
+    transition: all 0.3s ease;
+}
+.dark .glass-card {
+    background: rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;
+}
+
+/* Stat items inside glass cards */
+.glass-stat-item {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.dark .glass-stat-item {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.05);
 }
