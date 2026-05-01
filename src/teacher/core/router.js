@@ -1,8 +1,8 @@
 // src/teacher/core/router.js
-// Teacher portal router and page navigation
+// Teacher portal router and page navigation – FIXED import path
 
 import { AppState } from './state.js';
-import { clearListeners, initRealTimeSync } from '../../features/realtime-sync/sync.logic.js';
+import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js'; // corrected path
 import { TeacherCore } from '../teacher-core.js';
 
 const validPages = ['home', 'create', 'rank', 'folders', 'management'];
@@ -118,7 +118,6 @@ export const Router = {
     AppState.currentPage = page;
     TeacherCore.closeMobileSidebar?.();
 
-    // Highlight sidebar
     document.querySelectorAll('.sidebar-nav-item.nav-item').forEach(el => el.classList.remove('active'));
     document.getElementById('nav-' + page)?.classList.add('active');
 
@@ -139,7 +138,6 @@ export const Router = {
       mathPanel?.classList.remove('show');
     }
 
-    // Trigger page load
     const loadPage = {
       home: () => TeacherCore.homeView?.(),
       create: () => TeacherCore.createView?.(),
