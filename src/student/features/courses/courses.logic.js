@@ -1,6 +1,7 @@
 // src/student/features/courses/courses.logic.js
 // Course listing, filtering, joining logic – description expand/collapse,
-// persistent search & filter state, class badge on cards
+// persistent search & filter state, class badge on cards,
+// ONLY SHOW COURSES THAT HAVE A CLASS LEVEL
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, refreshExamCache } from '../../core/state.js';
@@ -52,7 +53,11 @@ export const CoursesManager = {
 
     const searchTerm = currentSearchTerm.toLowerCase();
 
+    // *** NEW: Only show courses that have a classLevel ***
     let filtered = allGroups.filter(g => {
+      // Must have a class level
+      if (!g.classLevel) return false;
+
       if (currentFilterClass !== 'all') {
         if (g.classLevel !== currentFilterClass) return false;
         if (currentFilterClass === 'Admission') {
@@ -94,7 +99,6 @@ export const CoursesManager = {
         permission: 'পারমিশন কী'
       }[group.joinMethod] || 'কোর্স কোড';
 
-      // Class badge – always shown if classLevel is defined
       const classBadge = group.classLevel ?
         `<span class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">${group.classLevel === 'Admission' ? 'এডমিশন' : group.classLevel}</span>` : '';
       const streamBadge = group.admissionStream ?
@@ -108,7 +112,6 @@ export const CoursesManager = {
         ? `<button class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 py-2 rounded-lg text-sm font-bold" disabled><i class="fas fa-check-circle"></i> জয়েন করেছেন</button>`
         : `<button onclick="CoursesManager.joinCourse('${group.id}', '${group.joinMethod}', '${group.groupCode || ''}')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition">জয়েন করুন</button>`;
 
-      // Description with toggle
       const desc = group.description || '';
       const descHtml = desc ? `
         <div class="mb-3">
@@ -210,7 +213,6 @@ export const CoursesManager = {
   },
 
   async joinCourse(groupId, joinMethod, groupCode) {
-    // (unchanged – same as previous correct version)
     if (!navigator.onLine) {
       Swal.fire('অফলাইন', 'ইন্টারনেট সংযোগ ছাড়া কোর্সে জয়েন করা যাবে না।', 'warning');
       return;
