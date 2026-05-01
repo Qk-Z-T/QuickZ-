@@ -129,8 +129,9 @@ export const StudentDashboard = {
           </div>
         </div>
         <div class="grid grid-cols-1 gap-6">
+          <!-- Live Exam Card (no text-white) -->
           <button id="live-exam-card" onclick="StudentDashboard.checkGroupAndLoad('live')"
-            class="glass-exam-card text-white shadow-xl">
+            class="glass-exam-card shadow-xl">
             <div class="dashboard-card-indicator live-now"></div>
             <div class="dashboard-card-indicator upcoming"></div>
             <div class="dashboard-card-content">
@@ -138,8 +139,10 @@ export const StudentDashboard = {
               <div class="dashboard-card-title">Live exam</div>
             </div>
           </button>
+
+          <!-- Mock Exam Card (no text-white) -->
           <button onclick="StudentDashboard.checkGroupAndLoad('mock')"
-            class="glass-exam-card text-white shadow-xl">
+            class="glass-exam-card shadow-xl">
             <div class="dashboard-card-content">
               <div class="dashboard-card-icon"><i class="fas fa-book-reader"></i></div>
               <div class="dashboard-card-title">Mock exam</div>
@@ -248,7 +251,7 @@ export const StudentDashboard = {
     document.getElementById('group-code-modal').classList.remove('hidden');
   },
 
-  // ---- Group Members Modal (kept for other uses, but not called from homepage) ----
+  // ---- Group Members Modal ----
   async showGroupMembersModal(groupId) {
     const modal = document.getElementById('group-members-modal');
     const title = document.getElementById('group-members-title');
