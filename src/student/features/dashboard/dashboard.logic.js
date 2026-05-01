@@ -399,6 +399,12 @@ export const StudentDashboard = {
         if (e.resultPublished || (e.endTime && new Date(e.endTime) < now)) liveExams.push(e);
       });
 
+      // If no past live exams at all, show message
+      if (liveExams.length === 0) {
+        contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">পূর্বের লাইভ পরীক্ষা</h2><p class="text-gray-500">কোনো পরীক্ষা নেই</p></div>`;
+        return;
+      }
+
       const userAttemptsSnap = await getDocs(query(collection(db, "attempts"), where("userId", "==", uid), where("isPractice", "==", false)));
       const userAttempts = {};
       userAttemptsSnap.forEach(d => { userAttempts[d.data().examId] = d.data(); });
@@ -487,36 +493,59 @@ export const StudentDashboard = {
     loadMathJax(null, contentEl);
   },
 
-  // ---- Mock Hub & Structure Navigation ----
+  // ---- Mock Hub & Structure Navigation (FIXED) ----
   async loadMockHub() {
     if (!AppState.activeGroupId) return;
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
+    // Offline first
     if (!navigator.onLine) {
       const cached = localStorage.getItem('mockFolderCache_' + AppState.activeGroupId);
       if (cached) {
-        const structure = JSON.parse(cached);
-        const subjects = structure.mock || [];
-        contentEl.innerHTML = `<div class="p-5 pb-20">
-          <button onclick="StudentDashboard.loadDashboard()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ড্যাশবোর্ড</button>
-          <h2 class="text-xl font-bold mb-4 text-center">বিষয় নির্বাচন করুন</h2>
-          ${subjects.map(sub => `<div onclick="StudentDashboard.loadMockChapters('${sub.id}', '${sub.teacherId}')" class="p-4 rounded-xl border mb-3 cursor-pointer flex justify-between"><span>${sub.name}</span><i class="fas fa-chevron-right"></i></div>`).join('')}
-        </div>`;
-        return;
+        try {
+          const structure = JSON.parse(cached);
+          const subjects = structure.mock || [];
+          contentEl.innerHTML = `<div class="p-5 pb-20">
+            <button onclick="StudentDashboard.loadDashboard()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ড্যাশবোর্ড</button>
+            <h2 class="text-xl font-bold mb-4 text-center">বিষয় নির্বাচন করুন</h2>
+            ${subjects.map(sub => `<div onclick="StudentDashboard.loadMockChapters('${sub.id}', '${sub.teacherId}')" class="p-4 rounded-xl border mb-3 cursor-pointer flex justify-between"><span>${sub.name}</span><i class="fas fa-chevron-right"></i></div>`).join('')}
+          </div>`;
+        } catch(e) {
+          contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">অফলাইন ক্যাশে সমস্যা</div>';
+        }
+      } else {
+        contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">অফলাইনে মক পরীক্ষার তালিকা পাওয়া যায়নি</div>';
       }
-      contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">অফলাইনে মক পরীক্ষার তালিকা পাওয়া যায়নি</div>';
       return;
     }
 
-    const groupDoc = await getDoc(doc(db, "groups", AppState.activeGroupId));
-    if (!groupDoc.exists()) return;
+    // Online
+    let groupDoc;
+    try {
+      groupDoc = await getDoc(doc(db, "groups", AppState.activeGroupId));
+    } catch (e) {
+      contentEl.innerHTML = '<div class="p-10 text-center text-red-500">কোর্স তথ্য লোড করতে ত্রুটি</div>';
+      return;
+    }
+
+    if (!groupDoc.exists()) {
+      contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">কোনো কোর্স পাওয়া যায়নি</div>';
+      return;
+    }
+
     const teacherId = groupDoc.data().teacherId;
+    if (!teacherId) {
+      contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">শিক্ষকের তথ্য পাওয়া যায়নি</div>';
+      return;
+    }
+
     const folderSnap = await getDoc(doc(db, "folderStructures", `${teacherId}_${AppState.activeGroupId}`));
     if (!folderSnap.exists()) {
       contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">কোনো মক পরীক্ষা নেই</div>';
       return;
     }
+
     const structure = folderSnap.data();
     localStorage.setItem('mockFolderCache_' + AppState.activeGroupId, JSON.stringify(structure));
     const subjects = structure.mock || [];
@@ -651,7 +680,7 @@ export const StudentDashboard = {
       const uid = auth.currentUser.uid;
       let rankHTML = '';
       attempts.forEach((att, i) => {
-        const studentInfo = { college: '', school: '' }; // minimal info
+        const studentInfo = { college: '', school: '' };
         rankHTML += renderRankRow(att, i, studentInfo, uid);
       });
 
