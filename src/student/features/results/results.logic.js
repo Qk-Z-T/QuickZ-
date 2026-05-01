@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view
+// Student results listing, filtering, and detailed result view – glass cards
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -11,7 +11,7 @@ import {
   doc, getDoc, collection, query, where, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// ---------- Local mutable filter & state ----------
+// Local mutable filter & state
 let resultTypeFilter = 'live';
 let resultsSubjectFilter = 'all';
 let currentResultPage = 1;
@@ -84,20 +84,20 @@ export const ResultsManager = {
     const renderCard = (item) => {
       const { attempt, exam } = item;
       return `
-        <div class="bg-white dark:bg-gray-800 p-4 mb-3 rounded-2xl border shadow-sm">
+        <div class="glass-card p-4 mb-3 rounded-2xl border border-white/20 shadow-sm">
           <div class="flex justify-between items-center">
             <div>
-              <div class="font-bold text-sm">${attempt.examTitle}</div>
-              <div class="text-xs text-gray-500 mt-1">${attempt.submittedAt ? moment(attempt.submittedAt.toDate()).format('DD MMM, h:mm A') : ''}</div>
+              <div class="font-bold text-sm dark:text-white">${attempt.examTitle}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${attempt.submittedAt ? moment(attempt.submittedAt.toDate()).format('DD MMM, h:mm A') : ''}</div>
               <div class="text-[10px] mt-1">
-                <span class="px-2 py-1 rounded ${attempt.isPractice ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">${attempt.isPractice ? 'মক' : 'লাইভ'}</span>
+                <span class="px-2 py-1 rounded ${attempt.isPractice ? 'bg-emerald-100/70 text-emerald-600' : 'bg-red-100/70 text-red-600'}">${attempt.isPractice ? 'মক' : 'লাইভ'}</span>
                 <span class="ml-1 text-gray-500">${exam.subject || ''}</span>
               </div>
             </div>
-            <div class="text-xl font-bold">${parseFloat(attempt.score).toFixed(2)}</div>
+            <div class="text-xl font-bold dark:text-white">${parseFloat(attempt.score).toFixed(2)}</div>
           </div>
-          <div class="mt-3 pt-3 border-t">
-            <button onclick="ResultsManager.viewDetailedResult('${attempt.id}')" class="w-full bg-emerald-50 text-emerald-700 py-2 rounded-lg text-xs font-bold border border-emerald-100">ফলাফল</button>
+          <div class="mt-3 pt-3 border-t border-white/20">
+            <button onclick="ResultsManager.viewDetailedResult('${attempt.id}')" class="w-full bg-emerald-50/60 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 py-2 rounded-lg text-xs font-bold border border-emerald-100/50 dark:border-emerald-800/50">ফলাফল</button>
           </div>
         </div>`;
     };
@@ -139,9 +139,7 @@ export const ResultsManager = {
     contentEl.innerHTML = '<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>';
 
     try {
-      console.log('🔍 Fetching attempt:', attemptId);
       const attSnap = await getDoc(doc(db, "attempts", attemptId));
-      console.log('✅ Attempt exists:', attSnap.exists());
       if (!attSnap.exists()) throw new Error("ফলাফল পাওয়া যায়নি");
       const att = attSnap.data();
 
@@ -224,24 +222,25 @@ export const ResultsManager = {
         contentEl.innerHTML = `
           <div class="p-5 pb-24">
             <button onclick="Router.student('results')" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ফলাফল তালিকা</button>
-            <div class="compact-summary-card">
+            <!-- Glass summary card -->
+            <div class="glass-card p-5 rounded-2xl mb-6">
               <div class="flex justify-between items-start mb-4">
                 <div>
-                  <div class="font-bold text-lg">${exam.title}</div>
-                  <div class="text-xs text-gray-500">${moment(att.submittedAt.toDate()).format('lll')}</div>
+                  <div class="font-bold text-lg dark:text-white">${exam.title}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">${moment(att.submittedAt.toDate()).format('lll')}</div>
                 </div>
                 <div class="text-right">
-                  <div class="text-3xl font-bold text-indigo-600">${parseFloat(att.score).toFixed(2)}</div>
-                  <div class="text-xs text-green-600 font-bold">${accuracy.toFixed(1)}% নির্ভুলতা</div>
+                  <div class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">${parseFloat(att.score).toFixed(2)}</div>
+                  <div class="text-xs text-green-600 dark:text-green-400 font-bold">${accuracy.toFixed(1)}% নির্ভুলতা</div>
                 </div>
               </div>
               <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mt-2">
-                <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center"><div class="font-bold">${totalQ}</div><div class="text-[10px] text-gray-500">মোট</div></div>
-                <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center"><div class="font-bold text-green-600">${correct}</div><div class="text-[10px] text-gray-500">সঠিক</div></div>
-                <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center"><div class="font-bold text-red-500">${wrong}</div><div class="text-[10px] text-gray-500">ভুল</div></div>
-                <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center"><div class="font-bold">${skipped}</div><div class="text-[10px] text-gray-500">স্কিপ</div></div>
-                <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center"><div class="font-bold">${timeStr}</div><div class="text-[10px] text-gray-500">সময়</div></div>
-                <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center">${StarRating(accuracy)}</div>
+                <div class="glass-stat-item"><div class="font-bold">${totalQ}</div><div class="text-[10px] text-gray-500">মোট</div></div>
+                <div class="glass-stat-item"><div class="font-bold text-green-600">${correct}</div><div class="text-[10px] text-gray-500">সঠিক</div></div>
+                <div class="glass-stat-item"><div class="font-bold text-red-500">${wrong}</div><div class="text-[10px] text-gray-500">ভুল</div></div>
+                <div class="glass-stat-item"><div class="font-bold">${skipped}</div><div class="text-[10px] text-gray-500">স্কিপ</div></div>
+                <div class="glass-stat-item"><div class="font-bold">${timeStr}</div><div class="text-[10px] text-gray-500">সময়</div></div>
+                <div class="glass-stat-item">${StarRating(accuracy)}</div>
               </div>
             </div>
             ${filterBtns}
@@ -251,7 +250,6 @@ export const ResultsManager = {
         loadMathJax(null, contentEl);
       };
 
-      // Attach filter/pagination methods
       this.setResultFilter = (f) => {
         resultFilter = f;
         currentResultPage = 1;
@@ -283,7 +281,6 @@ export const ResultsManager = {
 
       updateView();
     } catch (error) {
-      console.error('❌ Detailed result error:', error);
       Swal.fire('ত্রুটি', 'ফলাফল লোড ব্যর্থ', 'error');
       Router.student('results');
     }
