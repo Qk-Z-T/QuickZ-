@@ -1,5 +1,6 @@
 // src/student/core/router.js
-// Student portal routing – boxed menu items, auto‑close mobile drawer
+// Student portal routing – boxed menu items, auto‑close mobile drawer,
+// NO teacher code required during signup/profile completion
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState, clearListeners, refreshExamCache } from './state.js';
@@ -137,7 +138,6 @@ function renderHeader(activePage) {
       </select>
     </div>
     <div class="px-3 space-y-2">
-      <!-- CLOSE DRAWER FIRST, THEN NAVIGATE -->
       <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('dashboard');"><i class="fas fa-home"></i> হোম</div>
       <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('courses');"><i class="fas fa-book-open"></i> কোর্সসমূহ</div>
       <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('rank');"><i class="fas fa-trophy"></i> র‍্যাংক</div>
@@ -246,10 +246,7 @@ export const Router = {
                   <option value="Commerce">Commerce</option>
                 </select>
               </div>
-              <div>
-                <label class="form-label">Teacher's Code <span class="required">*</span></label>
-                <input type="text" id="teacher-code" class="form-input" placeholder="Enter teacher code" required>
-              </div>
+              <!-- TEACHER CODE FIELD REMOVED -->
               <button type="button" onclick="window.saveStudentProfile()" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 text-white py-3 rounded-xl font-bold mt-4">
                 Save Profile & Continue
               </button>
@@ -273,11 +270,10 @@ export const Router = {
         const motherPhone = document.getElementById('mother-phone').value.trim();
         const schoolName = document.getElementById('school-name').value.trim();
         const collegeName = document.getElementById('college-name').value.trim();
-        const teacherCode = document.getElementById('teacher-code').value.trim();
         const classLevel = document.getElementById('class-level').value;
         const admissionStream = document.getElementById('admission-stream')?.value || null;
 
-        if (!fullName || !fatherPhone || !motherPhone || !schoolName || !teacherCode || !classLevel) {
+        if (!fullName || !fatherPhone || !motherPhone || !schoolName || !classLevel) {
           Swal.fire('ত্রুটি', 'সব আবশ্যক তথ্য পূরণ করুন', 'error');
           return;
         }
@@ -286,11 +282,7 @@ export const Router = {
           return;
         }
 
-        const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
-        const teachersQuery = query(collection(db, "teachers"), where("teacherCode", "==", teacherCode));
-        const snap = await getDocs(teachersQuery);
-        if (snap.empty) { Swal.fire('ত্রুটি', 'ভুল শিক্ষক কোড', 'error'); return; }
-
+        // No teacher code required anymore
         const user = auth.currentUser;
         if (!user) return;
 
@@ -303,7 +295,7 @@ export const Router = {
           collegeName: collegeName || "",
           classLevel,
           admissionStream,
-          teacherCodes: [{ code: teacherCode, active: true }],
+          teacherCodes: [],                   // empty initially
           profileCompleted: true,
           updatedAt: new Date()
         };
@@ -315,15 +307,12 @@ export const Router = {
 
         AppState.profileCompleted = true;
         AppState.userProfile = { ...AppState.userProfile, ...profileData };
-        AppState.teacherCodes = [{ code: teacherCode, active: true }];
-        AppState.activeTeacherCode = teacherCode;
+        AppState.teacherCodes = [];
+        AppState.activeTeacherCode = null;
         AppState.classLevel = classLevel;
         AppState.admissionStream = admissionStream;
         localStorage.setItem('studentClassLevel', classLevel);
         if (admissionStream) localStorage.setItem('studentAdmissionStream', admissionStream);
-
-        const teacherInfo = snap.docs[0].data();
-        AppState.teacherNames = { [teacherCode]: teacherInfo.fullName || teacherInfo.name || "Unknown" };
         localStorage.setItem('userProfile', JSON.stringify(AppState.userProfile));
         localStorage.setItem('userLoggedIn', 'true');
 
@@ -343,10 +332,7 @@ export const Router = {
       return;
     }
 
-    if (AppState.teacherCodes?.length === 0 && p !== 'profile' && p !== 'management') {
-      Swal.fire('শিক্ষক কোড প্রয়োজন', 'অন্তত একটি শিক্ষক কোড যোগ করুন', 'warning').then(() => Router.student('management'));
-      return;
-    }
+    // Removed the check for teacherCodes length; no longer required to add a teacher code before using the app
 
     const exceptions = ['dashboard', 'profile', 'management', 'courses', 'notices'];
     if (!exceptions.includes(p) && !AppState.activeGroupId) {
