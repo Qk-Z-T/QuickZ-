@@ -2,10 +2,7 @@
 // Student results listing, filtering, and detailed result view
 
 import { auth, db } from '../../../shared/config/firebase.js';
-import {
-  AppState, ExamCache, unsubscribes,
-  currentResultPage, resultFilter, filteredQuestions
-} from '../../core/state.js';
+import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
 import { Router } from '../../core/router.js';
 import { loadMathJax } from '../../../shared/utils/dom-helper.js';
 import { MathHelper } from '../../../shared/utils/math-helper.js';
@@ -14,9 +11,15 @@ import {
   doc, getDoc, collection, query, where, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Local mutable filter states (imported ones may be read‑only)
+// ---------- Local mutable filter & state ----------
+// (allows reassignment without “Assignment to constant variable” errors)
 let resultTypeFilter = 'live';
 let resultsSubjectFilter = 'all';
+
+// Used in detailed result view (not imported)
+let currentResultPage = 1;
+let resultFilter = 'all';
+let filteredQuestions = [];
 
 export const ResultsManager = {
   async loadResults() {
@@ -155,10 +158,10 @@ export const ResultsManager = {
       }
       const qs = questions;
 
+      // Reset local state for this detailed view
       currentResultPage = 1;
       resultFilter = 'all';
-      filteredQuestions.length = 0;
-      filteredQuestions.push(...qs);
+      filteredQuestions = [...qs];
 
       const totalQ = qs.length;
       const correct = qs.reduce((acc, q, i) => acc + (att.answers[i] === q.correct ? 1 : 0), 0);
@@ -250,24 +253,36 @@ export const ResultsManager = {
         loadMathJax(null, contentEl);
       };
 
+      // Attach filter/pagination methods to this ResultsManager instance
+      // (but we use the module-level variables now)
       this.setResultFilter = (f) => {
         resultFilter = f;
         currentResultPage = 1;
         if (f === 'all') {
-          filteredQuestions.length = 0; filteredQuestions.push(...qs);
+          filteredQuestions = [...qs];
         } else {
-          filteredQuestions.length = 0;
-          filteredQuestions.push(...qs.filter((q, i) => {
+          filteredQuestions = qs.filter((q, i) => {
             const u = att.answers[i];
             const st = u === q.correct ? 'correct' : u === null ? 'skipped' : 'wrong';
             return st === f;
-          }));
+          });
         }
         updateView();
       };
 
-      this.prevResultPage = () => { if (currentResultPage > 1) { currentResultPage--; updateView(); } };
-      this.nextResultPage = () => { if (currentResultPage < Math.ceil(filteredQuestions.length / 25)) { currentResultPage++; updateView(); } };
+      this.prevResultPage = () => {
+        if (currentResultPage > 1) {
+          currentResultPage--;
+          updateView();
+        }
+      };
+
+      this.nextResultPage = () => {
+        if (currentResultPage < Math.ceil(filteredQuestions.length / 25)) {
+          currentResultPage++;
+          updateView();
+        }
+      };
 
       updateView();
     } catch (error) {
