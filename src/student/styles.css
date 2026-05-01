@@ -72,7 +72,7 @@
     100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
 }
 
-/* ---- Glass morphism for exam cards ---- */
+/* ---- Glass morphism for exam cards (UPDATED – readability fix) ---- */
 .glass-exam-card {
     height: 160px;
     border-radius: 24px;
@@ -88,12 +88,46 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.25);
-    color: white;
+    color: #1e293b;               /* dark text for light backgrounds */
 }
 .dark .glass-exam-card {
     background: rgba(0, 0, 0, 0.25);
     border-color: rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;               /* light text for dark backgrounds */
 }
+
+.glass-exam-card .dashboard-card-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+}
+
+.glass-exam-card .dashboard-card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+    background: rgba(0,0,0,0.1);     /* slightly more opaque */
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: inherit;                 /* icon inherits text color */
+}
+
+.glass-exam-card .dashboard-card-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 5px;
+    text-shadow: 0 1px 4px rgba(255,255,255,0.3); /* subtle glow */
+}
+
+/* Indicators (unchanged) */
 .glass-exam-card .dashboard-card-indicator {
     position: absolute;
     top: 15px;
@@ -248,7 +282,7 @@
 .toast-success { background: linear-gradient(135deg, #10b981, #059669); }
 .toast-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-/* ---- Sidebar menu box (new) ---- */
+/* ---- Sidebar menu box ---- */
 .sidebar-menu-box {
     background: var(--card-bg, white);
     border: 1px solid var(--border-light, #e2e8f0);
