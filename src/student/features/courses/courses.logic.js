@@ -1,5 +1,6 @@
 // src/student/features/courses/courses.logic.js
-// Course listing, filtering, joining logic – description expand/collapse
+// Course listing, filtering, joining logic – description expand/collapse,
+// persistent search & filter state, class badge on cards
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, refreshExamCache } from '../../core/state.js';
@@ -44,15 +45,18 @@ export const CoursesManager = {
     const studentStream = AppState.admissionStream || '';
     const joinedGroupIds = (AppState.joinedGroups || []).map(g => g.groupId);
 
-    const filterClass = document.getElementById('course-filter-class')?.value || 'all';
-    const searchTerm = (document.getElementById('course-search-input')?.value || '').toLowerCase().trim();
+    // Capture current filter/selections before re-render
+    const currentSearchTerm = (document.getElementById('course-search-input')?.value || '').trim();
+    const currentFilterClass = document.getElementById('course-filter-class')?.value || 'all';
+    const currentStreamFilter = document.getElementById('course-filter-stream')?.value || 'all';
+
+    const searchTerm = currentSearchTerm.toLowerCase();
 
     let filtered = allGroups.filter(g => {
-      if (filterClass !== 'all') {
-        if (g.classLevel !== filterClass) return false;
-        if (filterClass === 'Admission') {
-          const streamFilter = document.getElementById('course-filter-stream')?.value;
-          if (streamFilter && streamFilter !== 'all' && g.admissionStream !== streamFilter) return false;
+      if (currentFilterClass !== 'all') {
+        if (g.classLevel !== currentFilterClass) return false;
+        if (currentFilterClass === 'Admission') {
+          if (currentStreamFilter && currentStreamFilter !== 'all' && g.admissionStream !== currentStreamFilter) return false;
         }
       }
       if (searchTerm) {
@@ -73,14 +77,14 @@ export const CoursesManager = {
 
     const classLevels = ['6', '7', '8', 'SSC', 'HSC', 'Admission'];
     const classOptions = classLevels.map(lvl =>
-      `<option value="${lvl}" ${filterClass === lvl ? 'selected' : ''}>${lvl === 'Admission' ? 'এডমিশন' : (lvl === 'SSC' ? 'এসএসসি' : (lvl === 'HSC' ? 'এইচএসসি' : lvl+'ম শ্রেণী'))}</option>`
+      `<option value="${lvl}" ${lvl === currentFilterClass ? 'selected' : ''}>${lvl === 'Admission' ? 'এডমিশন' : (lvl === 'SSC' ? 'এসএসসি' : (lvl === 'HSC' ? 'এইচএসসি' : lvl+'ম শ্রেণী'))}</option>`
     ).join('');
 
     const streamOptions = `
-      <option value="all">সব শাখা</option>
-      <option value="Science">সায়েন্স</option>
-      <option value="Humanities">মানবিক</option>
-      <option value="Commerce">কমার্স</option>`;
+      <option value="all" ${currentStreamFilter === 'all' ? 'selected' : ''}>সব শাখা</option>
+      <option value="Science" ${currentStreamFilter === 'Science' ? 'selected' : ''}>সায়েন্স</option>
+      <option value="Humanities" ${currentStreamFilter === 'Humanities' ? 'selected' : ''}>মানবিক</option>
+      <option value="Commerce" ${currentStreamFilter === 'Commerce' ? 'selected' : ''}>কমার্স</option>`;
 
     const courseCards = filtered.length > 0 ? filtered.map(group => {
       const isJoined = joinedGroupIds.includes(group.id);
@@ -90,18 +94,19 @@ export const CoursesManager = {
         permission: 'পারমিশন কী'
       }[group.joinMethod] || 'কোর্স কোড';
 
+      // Class badge – always shown if classLevel is defined
       const classBadge = group.classLevel ?
-        `<span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">${group.classLevel === 'Admission' ? 'এডমিশন' : group.classLevel}</span>` : '';
+        `<span class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">${group.classLevel === 'Admission' ? 'এডমিশন' : group.classLevel}</span>` : '';
       const streamBadge = group.admissionStream ?
-        `<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">${group.admissionStream}</span>` : '';
+        `<span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 ml-1">${group.admissionStream}</span>` : '';
 
       const imageHtml = group.imageUrl ?
-        `<img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-xl">` :
+        `<img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-xl" alt="${group.name}">` :
         `<div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-xl"><i class="fas fa-book-open"></i></div>`;
 
       const actionButton = isJoined
-        ? `<button class="w-full bg-green-100 text-green-700 py-2 rounded-lg text-sm font-bold" disabled><i class="fas fa-check-circle"></i> জয়েন করেছেন</button>`
-        : `<button onclick="CoursesManager.joinCourse('${group.id}', '${group.joinMethod}', '${group.groupCode || ''}')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold">জয়েন করুন</button>`;
+        ? `<button class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 py-2 rounded-lg text-sm font-bold" disabled><i class="fas fa-check-circle"></i> জয়েন করেছেন</button>`
+        : `<button onclick="CoursesManager.joinCourse('${group.id}', '${group.joinMethod}', '${group.groupCode || ''}')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition">জয়েন করুন</button>`;
 
       // Description with toggle
       const desc = group.description || '';
@@ -115,21 +120,21 @@ export const CoursesManager = {
           " class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline mt-1 inline-flex items-center">
             আরও দেখুন <i class="fas fa-chevron-down ml-1"></i>
           </button>
-        </div>` : '';
+        </div>` : '<div class="mb-3"></div>';
 
       return `
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border overflow-hidden transition hover:shadow-md">
           ${imageHtml}
           <div class="p-4">
             <div class="flex justify-between items-start mb-2">
-              <h3 class="font-bold text-lg">${group.name}</h3>
-              <div class="flex gap-1">${classBadge} ${streamBadge}</div>
+              <h3 class="font-bold text-lg dark:text-white">${group.name}</h3>
+              <div class="flex items-center gap-1">${classBadge}${streamBadge}</div>
             </div>
-            <p class="text-xs text-gray-500 mb-1"><i class="fas fa-user-tie"></i> ${group.teacherName || 'শিক্ষক'}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1"><i class="fas fa-user-tie"></i> ${group.teacherName || 'শিক্ষক'}</p>
             ${descHtml}
             <div class="flex items-center justify-between mb-3">
-              <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">${joinMethodText}</span>
-              <span class="text-xs"><i class="fas fa-users"></i> ${group.studentIds?.length || 0} শিক্ষার্থী</span>
+              <span class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full">${joinMethodText}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400"><i class="fas fa-users"></i> ${group.studentIds?.length || 0} শিক্ষার্থী</span>
             </div>
             ${actionButton}
           </div>
@@ -138,33 +143,35 @@ export const CoursesManager = {
 
     contentEl.innerHTML = `
       <div class="p-5 pb-20">
-        <h2 class="text-2xl font-bold mb-2 text-center">কোর্সসমূহ</h2>
-        <p class="text-sm text-gray-500 mb-4 text-center">আপনার পছন্দের কোর্স খুঁজুন ও জয়েন করুন</p>
+        <h2 class="text-2xl font-bold mb-2 text-center dark:text-white">কোর্সসমূহ</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">আপনার পছন্দের কোর্স খুঁজুন ও জয়েন করুন</p>
 
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border mb-6">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 mb-6">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label class="block text-xs font-bold mb-1">সার্চ</label>
-              <input type="text" id="course-search-input" class="w-full p-2 border rounded-lg text-sm" placeholder="কোর্সের নাম, শিক্ষক...">
+              <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">সার্চ</label>
+              <input type="text" id="course-search-input" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white" placeholder="কোর্সের নাম, শিক্ষক...">
             </div>
             <div>
-              <label class="block text-xs font-bold mb-1">ক্লাস/লেভেল</label>
-              <select id="course-filter-class" class="w-full p-2 border rounded-lg text-sm">
+              <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">ক্লাস/লেভেল</label>
+              <select id="course-filter-class" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white">
                 <option value="all">সব ক্লাস</option>
                 ${classOptions}
               </select>
             </div>
-            <div id="stream-filter-container" style="display:${filterClass==='Admission'?'block':'none'};">
-              <label class="block text-xs font-bold mb-1">শাখা</label>
-              <select id="course-filter-stream" class="w-full p-2 border rounded-lg text-sm">
+            <div id="stream-filter-container" style="display:${currentFilterClass === 'Admission' ? 'block' : 'none'};">
+              <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">শাখা</label>
+              <select id="course-filter-stream" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white">
                 ${streamOptions}
               </select>
             </div>
             <div class="flex items-end">
-              <button onclick="CoursesManager.applyFilter()" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold">ফিল্টার</button>
+              <button onclick="CoursesManager.applyFilter()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-bold transition">
+                ফিল্টার
+              </button>
             </div>
           </div>
-          ${studentClass ? `<p class="text-xs text-indigo-600 mt-3"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '('+studentStream+')' : ''}</p>` : ''}
+          ${studentClass ? `<p class="text-xs text-indigo-600 dark:text-indigo-400 mt-3"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '('+studentStream+')' : ''}</p>` : ''}
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="course-list-container">
@@ -172,19 +179,29 @@ export const CoursesManager = {
         </div>
       </div>`;
 
-    // Attach events
+    // Restore search term value
+    const searchInput = document.getElementById('course-search-input');
+    if (searchInput) {
+      searchInput.value = currentSearchTerm;
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') CoursesManager.applyFilter();
+      });
+    }
+
+    // Restore class filter selection
     const classSelect = document.getElementById('course-filter-class');
     const streamContainer = document.getElementById('stream-filter-container');
-    classSelect?.addEventListener('change', function () {
-      streamContainer.style.display = this.value === 'Admission' ? 'block' : 'none';
-    });
-    document.getElementById('course-search-input')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') CoursesManager.applyFilter();
-    });
-    // Preselect stream if filtered
-    if (filterClass === 'Admission') {
-      const streamSelect = document.getElementById('course-filter-stream');
-      if (streamSelect) streamSelect.value = document.getElementById('course-filter-stream')?.dataset?.value || 'all';
+    if (classSelect) {
+      classSelect.value = currentFilterClass;
+      classSelect.addEventListener('change', function () {
+        streamContainer.style.display = this.value === 'Admission' ? 'block' : 'none';
+      });
+    }
+
+    // Restore stream filter selection
+    const streamSelect = document.getElementById('course-filter-stream');
+    if (streamSelect) {
+      streamSelect.value = currentStreamFilter;
     }
   },
 
@@ -193,6 +210,7 @@ export const CoursesManager = {
   },
 
   async joinCourse(groupId, joinMethod, groupCode) {
+    // (unchanged – same as previous correct version)
     if (!navigator.onLine) {
       Swal.fire('অফলাইন', 'ইন্টারনেট সংযোগ ছাড়া কোর্সে জয়েন করা যাবে না।', 'warning');
       return;
@@ -202,13 +220,11 @@ export const CoursesManager = {
       const user = auth.currentUser;
       if (!user) return;
 
-      // Public join
       if (joinMethod === 'public') {
         await this.addToGroupDirectly(groupId);
         return;
       }
 
-      // Code join
       if (joinMethod === 'code') {
         const { value: code } = await Swal.fire({
           title: 'কোর্স কোড লিখুন',
@@ -226,7 +242,6 @@ export const CoursesManager = {
         return;
       }
 
-      // Permission key join
       if (joinMethod === 'permission') {
         const { value: key } = await Swal.fire({
           title: 'পারমিশন কী লিখুন',
