@@ -1,5 +1,5 @@
 // src/student/features/courses/courses.logic.js
-// Course listing, filtering, joining logic
+// Course listing, filtering, joining logic – description expand/collapse
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, refreshExamCache } from '../../core/state.js';
@@ -103,6 +103,20 @@ export const CoursesManager = {
         ? `<button class="w-full bg-green-100 text-green-700 py-2 rounded-lg text-sm font-bold" disabled><i class="fas fa-check-circle"></i> জয়েন করেছেন</button>`
         : `<button onclick="CoursesManager.joinCourse('${group.id}', '${group.joinMethod}', '${group.groupCode || ''}')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold">জয়েন করুন</button>`;
 
+      // Description with toggle
+      const desc = group.description || '';
+      const descHtml = desc ? `
+        <div class="mb-3">
+          <p id="desc-${group.id}" class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">${desc}</p>
+          <button onclick="
+            const d = document.getElementById('desc-${group.id}');
+            const clamped = d.classList.toggle('line-clamp-1');
+            this.innerHTML = clamped ? 'আরও দেখুন <i class=\\'fas fa-chevron-down ml-1\\'></i>' : 'লুকান <i class=\\'fas fa-chevron-up ml-1\\'></i>';
+          " class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline mt-1 inline-flex items-center">
+            আরও দেখুন <i class="fas fa-chevron-down ml-1"></i>
+          </button>
+        </div>` : '';
+
       return `
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border overflow-hidden">
           ${imageHtml}
@@ -112,7 +126,7 @@ export const CoursesManager = {
               <div class="flex gap-1">${classBadge} ${streamBadge}</div>
             </div>
             <p class="text-xs text-gray-500 mb-1"><i class="fas fa-user-tie"></i> ${group.teacherName || 'শিক্ষক'}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">${group.description || 'কোনো বিবরণ নেই'}</p>
+            ${descHtml}
             <div class="flex items-center justify-between mb-3">
               <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">${joinMethodText}</span>
               <span class="text-xs"><i class="fas fa-users"></i> ${group.studentIds?.length || 0} শিক্ষার্থী</span>
