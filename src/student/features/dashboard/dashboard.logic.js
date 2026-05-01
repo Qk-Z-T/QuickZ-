@@ -11,7 +11,7 @@ import {
   doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Local mutable filter (was imported as read‑only)
+// Local mutable filter
 let pastSubjectFilter = 'all';
 
 // Helper: get content container
@@ -296,7 +296,6 @@ export const StudentDashboard = {
     let exams = [];
     let userAttempts = {};
 
-    // Offline cache fallback
     if (!navigator.onLine) {
       const cached = localStorage.getItem('offlineExamCache_' + AppState.activeGroupId);
       if (cached) {
@@ -309,12 +308,10 @@ export const StudentDashboard = {
         return;
       }
     } else {
-      // Online: fetch attempts and exams
       const userAttemptsSnap = await getDocs(query(collection(db, "attempts"), where("userId", "==", uid), where("isPractice", "==", false)));
       userAttemptsSnap.forEach(doc => { userAttempts[doc.data().examId] = doc.data(); });
       const snap = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId)));
       snap.forEach(doc => exams.push({ id: doc.id, ...doc.data() }));
-      // cache
       const cacheObj = {};
       exams.forEach(e => cacheObj[e.id] = e);
       localStorage.setItem('offlineExamCache_' + AppState.activeGroupId, JSON.stringify(cacheObj));
@@ -395,13 +392,7 @@ export const StudentDashboard = {
       const uid = auth.currentUser.uid;
       const now = new Date();
 
-      // --- DEBUG START ---
-      console.log('🔍 Fetching past live exams for group:', AppState.activeGroupId);
-      // --- DEBUG END ---
-
       const snaps = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
-      console.log('✅ Past live exams snap size:', snaps.size);
-
       const liveExams = [];
       snaps.forEach(doc => {
         const e = { id: doc.id, ...doc.data() };
@@ -451,7 +442,7 @@ export const StudentDashboard = {
           ${all.map(e => renderCard(e, attended.includes(e))).join('') || '<div class="text-center py-20 text-gray-400">কোনো পরীক্ষা নেই</div>'}
         </div>`;
     } catch(e) {
-      console.error('❌ Past live exams error:', e);
+      console.error(e);
       Swal.fire('ত্রুটি', 'পূর্বের লাইভ পরীক্ষা লোড করতে ব্যর্থ', 'error');
     }
   },
@@ -502,7 +493,6 @@ export const StudentDashboard = {
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    // Try offline cache
     if (!navigator.onLine) {
       const cached = localStorage.getItem('mockFolderCache_' + AppState.activeGroupId);
       if (cached) {
@@ -590,7 +580,7 @@ export const StudentDashboard = {
       </div>`;
   },
 
-  // ---- Rankings ----
+  // ---- Rankings (two‑step: list → detail) ----
   async loadRankings() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -600,7 +590,6 @@ export const StudentDashboard = {
     if (!contentEl) return;
 
     try {
-      const uid = auth.currentUser.uid;
       const snap = await getDocs(query(
         collection(db, "exams"),
         where("groupId", "==", AppState.activeGroupId),
@@ -615,23 +604,60 @@ export const StudentDashboard = {
         return;
       }
 
-      const exam = exams[exams.length - 1];
+      let html = `<div class="p-5 pb-20">
+        <h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2>
+        <p class="text-sm text-gray-500 mb-4">একটি পরীক্ষা বেছে নিন</p>`;
+
+      exams.forEach(exam => {
+        const date = exam.createdAt?.toDate ? moment(exam.createdAt.toDate()).format('DD MMM, YYYY') : '';
+        html += `
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border mb-3 flex justify-between items-center">
+            <div>
+              <div class="font-bold">${exam.title}</div>
+              <div class="text-xs text-gray-500">${date}</div>
+            </div>
+            <button onclick="StudentDashboard.viewExamRanking('${exam.id}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">View Rank</button>
+          </div>`;
+      });
+
+      html += `</div>`;
+      contentEl.innerHTML = html;
+    } catch (e) {
+      console.error(e);
+      contentEl.innerHTML = '<div class="p-5 text-red-500">র‍্যাংকিং লোড করতে ত্রুটি</div>';
+    }
+  },
+
+  async viewExamRanking(examId) {
+    const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
+    if (!contentEl) return;
+
+    try {
+      const examSnap = await getDoc(doc(db, "exams", examId));
+      if (!examSnap.exists()) {
+        Swal.fire('Error', 'Exam not found', 'error');
+        return this.loadRankings();
+      }
+      const exam = examSnap.data();
+
       const attemptsSnap = await getDocs(query(
         collection(db, "attempts"),
-        where("examId", "==", exam.id),
+        where("examId", "==", examId),
         orderBy("score", "desc")
       ));
       const attempts = [];
       attemptsSnap.forEach(d => attempts.push({ id: d.id, ...d.data() }));
 
+      const uid = auth.currentUser.uid;
       let rankHTML = '';
       attempts.forEach((att, i) => {
-        const studentInfo = { college: '', school: '' };
+        const studentInfo = { college: '', school: '' }; // minimal info
         rankHTML += renderRankRow(att, i, studentInfo, uid);
       });
 
       contentEl.innerHTML = `
         <div class="p-5 pb-20">
+          <button onclick="StudentDashboard.loadRankings()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> র‍্যাংকিং তালিকা</button>
           <h2 class="text-xl font-bold mb-2">${exam.title} - র‍্যাংকিং</h2>
           <p class="text-xs text-gray-500 mb-4">${attempts.length} জন অংশগ্রহণকারী</p>
           <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">
