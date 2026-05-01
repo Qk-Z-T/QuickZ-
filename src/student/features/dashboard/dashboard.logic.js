@@ -115,7 +115,7 @@ export const StudentDashboard = {
     const myRouteId = window.currentRouteId;
     const contentEl = setPageContent(`
       <div class="p-5 pb-20 max-w-lg mx-auto">
-        <div id="active-course-card" class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border dark:border-gray-700 overflow-hidden mb-6">
+        <div id="active-course-card" class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border dark:border-gray-700 overflow-hidden mb-6 blue-course-card">
           <div class="p-5">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600 text-xl">
@@ -129,7 +129,6 @@ export const StudentDashboard = {
           </div>
         </div>
         <div class="grid grid-cols-1 gap-6">
-          <!-- Live Exam Card (no text-white) -->
           <button id="live-exam-card" onclick="StudentDashboard.checkGroupAndLoad('live')"
             class="glass-exam-card shadow-xl">
             <div class="dashboard-card-indicator live-now"></div>
@@ -140,7 +139,6 @@ export const StudentDashboard = {
             </div>
           </button>
 
-          <!-- Mock Exam Card (no text-white) -->
           <button onclick="StudentDashboard.checkGroupAndLoad('mock')"
             class="glass-exam-card shadow-xl">
             <div class="dashboard-card-content">
@@ -162,30 +160,30 @@ export const StudentDashboard = {
         if (!cardContainer) return;
 
         const classBadge = group.classLevel ?
-          `<span class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">${group.classLevel === 'Admission' ? 'এডমিশন' : group.classLevel}</span>` : '';
+          `<span class="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full border border-white/30">${group.classLevel === 'Admission' ? 'এডমিশন' : group.classLevel}</span>` : '';
         const streamBadge = group.admissionStream ?
-          `<span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full ml-1">${group.admissionStream}</span>` : '';
+          `<span class="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full border border-white/30 ml-1">${group.admissionStream}</span>` : '';
         const imageHtml = group.imageUrl ?
           `<img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-2xl">` :
           `<div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-2xl"><i class="fas fa-book-open"></i></div>`;
 
-        // Course card with toggle description, no extra buttons
+        // Blue gradient course card
         cardContainer.innerHTML = `
           ${imageHtml}
-          <div class="p-5">
+          <div class="p-5 bg-gradient-to-br from-indigo-500 to-blue-600 text-white">
             <div class="flex justify-between items-start">
               <div>
-                <h3 class="text-xl font-bold dark:text-white bengali-text">${group.name}</h3>
-                <p class="text-xs text-gray-500 mt-1">
+                <h3 class="text-xl font-bold bengali-text">${group.name}</h3>
+                <p class="text-xs text-indigo-100 mt-1">
                   <i class="fas fa-user-tie mr-1"></i> ${group.teacherName || 'শিক্ষক'}
-                  <span class="mx-1 text-gray-300 dark:text-gray-600">|</span>
+                  <span class="mx-1 text-indigo-200">|</span>
                   ${group.studentIds?.length || 0} শিক্ষার্থী
                 </p>
               </div>
               <div class="flex items-center gap-1">${classBadge} ${streamBadge}</div>
             </div>
 
-            <div id="course-desc" class="text-sm text-gray-600 dark:text-gray-400 mt-3 line-clamp-none hidden">
+            <div id="course-desc" class="text-sm text-indigo-100 mt-3 line-clamp-none hidden">
               ${group.description || 'কোনো বিবরণ নেই'}
             </div>
 
@@ -195,13 +193,13 @@ export const StudentDashboard = {
               this.innerHTML = isHidden
                 ? '<i class=\\'fas fa-chevron-down mr-1\\'></i> বিস্তারিত দেখুন'
                 : '<i class=\\'fas fa-chevron-up mr-1\\'></i> লুকান'
-            " class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-3 flex items-center gap-1 hover:underline">
+            " class="text-xs font-bold text-white mt-3 flex items-center gap-1 hover:underline opacity-90">
               <i class="fas fa-chevron-down mr-1"></i> বিস্তারিত দেখুন
             </button>
           </div>
         `;
 
-        // Check live exam indicators (keep existing logic)
+        // Check live exam indicators
         const snap = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
         const now = new Date();
         let hasOngoing = false, hasUpcoming = false;
