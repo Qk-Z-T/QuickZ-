@@ -44,7 +44,6 @@ function renderHeader(activePage) {
     </div>
 
     <div class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-      <!-- Each menu item is a separate box -->
       <button onclick="Router.student('dashboard')" class="sidebar-menu-item ${activePage === 'dashboard' ? 'active' : ''}">
         <i class="fas fa-home w-5 text-lg"></i> হোম
       </button>
@@ -138,14 +137,14 @@ function renderHeader(activePage) {
       </select>
     </div>
     <div class="px-3 space-y-2">
-      <!-- Individual boxes in mobile drawer, each auto‑closes the drawer -->
-      <div class="sidebar-menu-item" onclick="Router.student('dashboard'); toggleMobileDrawer()"><i class="fas fa-home"></i> হোম</div>
-      <div class="sidebar-menu-item" onclick="Router.student('courses'); toggleMobileDrawer()"><i class="fas fa-book-open"></i> কোর্সসমূহ</div>
-      <div class="sidebar-menu-item" onclick="Router.student('rank'); toggleMobileDrawer()"><i class="fas fa-trophy"></i> র‍্যাংক</div>
-      <div class="sidebar-menu-item" onclick="Router.student('results'); toggleMobileDrawer()"><i class="fas fa-clipboard-list"></i> ফলাফল</div>
-      <div class="sidebar-menu-item" onclick="Router.student('analysis'); toggleMobileDrawer()"><i class="fas fa-chart-pie"></i> অগ্রগতি</div>
-      <div class="sidebar-menu-item" onclick="Router.student('notices'); toggleMobileDrawer()"><i class="fas fa-bell"></i> নোটিস</div>
-      <div class="sidebar-menu-item" onclick="Router.student('management'); toggleMobileDrawer()"><i class="fas fa-cogs"></i> ম্যানেজমেন্ট</div>
+      <!-- CLOSE DRAWER FIRST, THEN NAVIGATE -->
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('dashboard');"><i class="fas fa-home"></i> হোম</div>
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('courses');"><i class="fas fa-book-open"></i> কোর্সসমূহ</div>
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('rank');"><i class="fas fa-trophy"></i> র‍্যাংক</div>
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('results');"><i class="fas fa-clipboard-list"></i> ফলাফল</div>
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('analysis');"><i class="fas fa-chart-pie"></i> অগ্রগতি</div>
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('notices');"><i class="fas fa-bell"></i> নোটিস</div>
+      <div class="sidebar-menu-item" onclick="toggleMobileDrawer(); Router.student('management');"><i class="fas fa-cogs"></i> ম্যানেজমেন্ট</div>
     </div>
   </div>
 
