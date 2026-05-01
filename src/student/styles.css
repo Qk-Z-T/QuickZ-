@@ -72,7 +72,7 @@
     100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
 }
 
-/* ---- Glass morphism for exam cards (UPDATED – readability fix) ---- */
+/* ---- Glass morphism for exam cards ---- */
 .glass-exam-card {
     height: 160px;
     border-radius: 24px;
@@ -95,7 +95,6 @@
     border-color: rgba(255, 255, 255, 0.1);
     color: #f1f5f9;               /* light text for dark backgrounds */
 }
-
 .glass-exam-card .dashboard-card-content {
     display: flex;
     flex-direction: column;
@@ -105,7 +104,6 @@
     width: 100%;
     height: 100%;
 }
-
 .glass-exam-card .dashboard-card-icon {
     width: 60px;
     height: 60px;
@@ -114,20 +112,17 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 15px;
-    background: rgba(0,0,0,0.1);     /* slightly more opaque */
+    background: rgba(0,0,0,0.1);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.3);
-    color: inherit;                 /* icon inherits text color */
+    color: inherit;               /* icon matches text color */
 }
-
 .glass-exam-card .dashboard-card-title {
     font-size: 28px;
     font-weight: 800;
     margin-bottom: 5px;
-    text-shadow: 0 1px 4px rgba(255,255,255,0.3); /* subtle glow */
+    text-shadow: 0 1px 4px rgba(255,255,255,0.3);
 }
-
-/* Indicators (unchanged) */
 .glass-exam-card .dashboard-card-indicator {
     position: absolute;
     top: 15px;
@@ -261,7 +256,7 @@
 /* ---- Course switcher ---- */
 .course-switcher-dropdown { position: relative; }
 
-/* ---- Drawer items ---- */
+/* ---- Drawer items (old) ---- */
 .drawer-item { display: flex; align-items: center; gap: 15px; padding: 14px 16px; border-radius: 12px; font-size: 16px; font-weight: 500; margin-bottom: 6px; cursor: pointer; color: var(--text-primary); background: var(--hover-bg); border: 1px solid var(--border-light); }
 .drawer-item i { width: 24px; color: #4f46e5; }
 
@@ -282,14 +277,46 @@
 .toast-success { background: linear-gradient(135deg, #10b981, #059669); }
 .toast-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-/* ---- Sidebar menu box ---- */
-.sidebar-menu-box {
-    background: var(--card-bg, white);
+/* ---- Individual sidebar menu items (boxed) ---- */
+.sidebar-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
     border: 1px solid var(--border-light, #e2e8f0);
-    border-radius: 16px;
-    padding: 8px;
+    background: var(--card-bg, white);
+    color: var(--text-primary, #475569);
 }
-.dark .sidebar-menu-box {
-    background: var(--card-bg, #1e293b);
+.dark .sidebar-menu-item {
     border-color: var(--border-light, #475569);
+    background: var(--card-bg, #1e293b);
+    color: #cbd5e1;
+}
+.sidebar-menu-item i {
+    width: 24px;
+    font-size: 1.1rem;
+    color: inherit;
+}
+.sidebar-menu-item.active,
+.sidebar-menu-item:hover {
+    background: var(--hover-bg, #f8fafc);
+    border-color: #4f46e5;
+    color: #4f46e5;
+}
+.dark .sidebar-menu-item.active,
+.dark .sidebar-menu-item:hover {
+    background: #1e293b;
+    border-color: #6366f1;
+    color: #818cf8;
+}
+
+/* Mobile drawer overrides */
+.mobile-drawer .sidebar-menu-item {
+    border-radius: 10px;
+    padding: 12px 16px;
 }
