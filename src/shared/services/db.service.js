@@ -1,5 +1,5 @@
 // src/shared/services/db.service.js
-// IndexedDB wrapper — works as global (window.DB) only
+// IndexedDB wrapper – now exports DB for ES modules
 
 const DB_NAME = 'QuickZOfflineDB';
 const DB_VERSION = 2;
@@ -139,7 +139,7 @@ async function getPendingByCollection(collectionName) {
   });
 }
 
-window.DB = {
+const DB = {
   openDB,
   saveData,
   getData,
@@ -150,3 +150,9 @@ window.DB = {
   getPendingByCollection,
   STORES
 };
+
+// Attach globally for non-module scripts
+window.DB = DB;
+
+// Export for ES modules
+export { DB };
