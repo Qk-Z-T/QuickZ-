@@ -1,9 +1,10 @@
 // src/teacher/core/router.js
-// Teacher portal router and page navigation – FIXED import path
+// Teacher portal router and page navigation – FIXED import for Teacher
 
 import { AppState } from './state.js';
-import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js'; // CORRECT path
-import { TeacherCore } from '../teacher-core.js';
+import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js';
+// CHANGED: import Teacher as TeacherCore (the real export is named Teacher)
+import { Teacher as TeacherCore } from '../teacher-core.js';
 
 const validPages = ['home', 'create', 'rank', 'folders', 'management'];
 
