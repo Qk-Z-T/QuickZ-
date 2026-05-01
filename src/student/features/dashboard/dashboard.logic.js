@@ -11,7 +11,7 @@ import {
   doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Local mutable filter (previously imported as read-only)
+// Local mutable filter (was imported as read‑only)
 let pastSubjectFilter = 'all';
 
 // Helper: get content container
@@ -394,7 +394,14 @@ export const StudentDashboard = {
     try {
       const uid = auth.currentUser.uid;
       const now = new Date();
+
+      // --- DEBUG START ---
+      console.log('🔍 Fetching past live exams for group:', AppState.activeGroupId);
+      // --- DEBUG END ---
+
       const snaps = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
+      console.log('✅ Past live exams snap size:', snaps.size);
+
       const liveExams = [];
       snaps.forEach(doc => {
         const e = { id: doc.id, ...doc.data() };
@@ -443,7 +450,10 @@ export const StudentDashboard = {
           <div class="flex gap-2 mb-4 overflow-x-auto">${filterBtns}</div>
           ${all.map(e => renderCard(e, attended.includes(e))).join('') || '<div class="text-center py-20 text-gray-400">কোনো পরীক্ষা নেই</div>'}
         </div>`;
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error('❌ Past live exams error:', e);
+      Swal.fire('ত্রুটি', 'পূর্বের লাইভ পরীক্ষা লোড করতে ব্যর্থ', 'error');
+    }
   },
 
   setPastFilter(subject) {
@@ -580,7 +590,7 @@ export const StudentDashboard = {
       </div>`;
   },
 
-  // ---- Rankings (NEW) ----
+  // ---- Rankings ----
   async loadRankings() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -591,7 +601,6 @@ export const StudentDashboard = {
 
     try {
       const uid = auth.currentUser.uid;
-      // Fetch published live exams
       const snap = await getDocs(query(
         collection(db, "exams"),
         where("groupId", "==", AppState.activeGroupId),
@@ -606,7 +615,6 @@ export const StudentDashboard = {
         return;
       }
 
-      // Display latest published exam ranking
       const exam = exams[exams.length - 1];
       const attemptsSnap = await getDocs(query(
         collection(db, "attempts"),
@@ -636,7 +644,7 @@ export const StudentDashboard = {
     }
   },
 
-  // ---- Notices (NEW) ----
+  // ---- Notices ----
   async loadNotices() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -655,7 +663,6 @@ export const StudentDashboard = {
       const notices = [];
       snap.forEach(d => notices.push({ id: d.id, ...d.data() }));
 
-      // Mark as viewed
       for (const n of notices) {
         const noticeRef = doc(db, "notices", n.id);
         const currentViews = n.views || {};
@@ -701,5 +708,4 @@ export const StudentDashboard = {
   }
 };
 
-// Global exposure
 window.StudentDashboard = StudentDashboard;
