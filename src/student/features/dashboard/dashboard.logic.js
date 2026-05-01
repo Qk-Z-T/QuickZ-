@@ -1,5 +1,6 @@
 // src/student/features/dashboard/dashboard.logic.js
 // Student dashboard, live & mock exam listing logic, rankings, notices
+// (checkGroupAndLoad now navigates to courses instead of group code modal)
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes, lastMockContext } from '../../core/state.js';
@@ -11,14 +12,9 @@ import {
   doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Local mutable filter
 let pastSubjectFilter = 'all';
 
-// Helper: get content container
-function getContentContainer() {
-  return document.getElementById('page-content');
-}
-
+function getContentContainer() { return document.getElementById('page-content'); }
 function setPageContent(html) {
   const container = getContentContainer();
   if (container) container.innerHTML = html;
@@ -138,7 +134,6 @@ export const StudentDashboard = {
               <div class="dashboard-card-title">Live exam</div>
             </div>
           </button>
-
           <button onclick="StudentDashboard.checkGroupAndLoad('mock')"
             class="glass-exam-card shadow-xl">
             <div class="dashboard-card-content">
@@ -167,7 +162,6 @@ export const StudentDashboard = {
           `<img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-2xl">` :
           `<div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-2xl"><i class="fas fa-book-open"></i></div>`;
 
-        // Blue gradient course card
         cardContainer.innerHTML = `
           ${imageHtml}
           <div class="p-5 bg-gradient-to-br from-indigo-500 to-blue-600 text-white">
@@ -199,7 +193,6 @@ export const StudentDashboard = {
           </div>
         `;
 
-        // Check live exam indicators
         const snap = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
         const now = new Date();
         let hasOngoing = false, hasUpcoming = false;
@@ -238,7 +231,18 @@ export const StudentDashboard = {
 
   checkGroupAndLoad(type) {
     if (!AppState.activeGroupId) {
-      Swal.fire('কোর্স প্রয়োজন', 'আপনাকে অবশ্যই একটি কোর্সে যোগ দিতে হবে', 'warning').then(() => StudentDashboard.showGroupCodeModal());
+      Swal.fire({
+        title: 'কোর্স প্রয়োজন',
+        text: 'আপনাকে অবশ্যই একটি কোর্সে যোগ দিতে হবে',
+        icon: 'warning',
+        confirmButtonText: 'কোর্স খুঁজুন',
+        showCancelButton: true,
+        cancelButtonText: 'বাতিল'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Router.student('courses');
+        }
+      });
       return;
     }
     if (type === 'live') StudentDashboard.loadLiveExams();
@@ -670,7 +674,6 @@ export const StudentDashboard = {
     try {
       const uid = auth.currentUser.uid;
 
-      // 1. Get exam details
       const examSnap = await getDoc(doc(db, "exams", examId));
       if (!examSnap.exists()) {
         Swal.fire('Error', 'Exam not found', 'error');
@@ -686,14 +689,12 @@ export const StudentDashboard = {
         ? moment(exam.startTime).format('hh:mm A')
         : 'N/A';
 
-      // 2. Get all real attempts (not practice, submitted)
       const attemptsSnap = await getDocs(query(
         collection(db, "attempts"),
         where("examId", "==", examId),
         where("isPractice", "==", false)
       ));
 
-      // 3. Group by userId, keep only the FIRST submitted attempt (by submittedAt)
       const userFirstAttempt = {};
       attemptsSnap.forEach(doc => {
         const att = { id: doc.id, ...doc.data() };
@@ -705,11 +706,10 @@ export const StudentDashboard = {
         }
       });
 
-      // 4. Convert to array and sort by score desc
       const rankedList = Object.values(userFirstAttempt).map(att => ({
         ...att,
         score: parseFloat(att.score) || 0,
-        accuracy: 0, // placeholder
+        accuracy: 0,
         timeTakenSeconds: att.startedAt && att.submittedAt
           ? Math.floor((att.submittedAt.toDate() - att.startedAt.toDate()) / 1000)
           : 0
@@ -717,15 +717,11 @@ export const StudentDashboard = {
 
       rankedList.sort((a, b) => b.score - a.score);
 
-      // 5. Find current user's rank
       let myRank = null;
       rankedList.forEach((att, index) => {
-        if (att.userId === uid) {
-          myRank = index + 1;
-        }
+        if (att.userId === uid) myRank = index + 1;
       });
 
-      // 6. Build glass summary card
       const summaryHtml = `
         <div class="glass-card p-5 rounded-2xl mb-6">
           <h3 class="text-xl font-bold mb-2 dark:text-white">${exam.title}</h3>
@@ -756,7 +752,6 @@ export const StudentDashboard = {
         </div>
       `;
 
-      // 7. Build rank rows
       let rankHTML = '';
       rankedList.forEach((att, i) => {
         const studentInfo = { college: '', school: '' };
