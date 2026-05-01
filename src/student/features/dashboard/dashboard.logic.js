@@ -2,7 +2,7 @@
 // Student dashboard, live & mock exam listing logic, rankings, notices
 
 import { auth, db } from '../../../shared/config/firebase.js';
-import { AppState, ExamCache, unsubscribes, pastSubjectFilter, lastMockContext } from '../../core/state.js';
+import { AppState, ExamCache, unsubscribes, lastMockContext } from '../../core/state.js';
 import { Router } from '../../core/router.js';
 import { loadMathJax } from '../../../shared/utils/dom-helper.js';
 import { MathHelper } from '../../../shared/utils/math-helper.js';
@@ -10,6 +10,9 @@ import { renderRankRow } from '../../components/result-row.js';
 import {
   doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+// Local mutable filter (previously imported as read-only)
+let pastSubjectFilter = 'all';
 
 // Helper: get content container
 function getContentContainer() {
@@ -603,8 +606,8 @@ export const StudentDashboard = {
         return;
       }
 
-      // For simplicity, display latest published exam ranking (can be extended to select exam)
-      const exam = exams[exams.length - 1]; // latest
+      // Display latest published exam ranking
+      const exam = exams[exams.length - 1];
       const attemptsSnap = await getDocs(query(
         collection(db, "attempts"),
         where("examId", "==", exam.id),
@@ -613,10 +616,9 @@ export const StudentDashboard = {
       const attempts = [];
       attemptsSnap.forEach(d => attempts.push({ id: d.id, ...d.data() }));
 
-      // Build rank rows
       let rankHTML = '';
       attempts.forEach((att, i) => {
-        const studentInfo = { college: '', school: '' }; // we don't fetch full profile here, optional
+        const studentInfo = { college: '', school: '' };
         rankHTML += renderRankRow(att, i, studentInfo, uid);
       });
 
