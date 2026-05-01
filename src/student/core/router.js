@@ -1,5 +1,5 @@
 // src/student/core/router.js
-// Student portal routing – with boxed menu UI
+// Student portal routing – boxed menu items, auto‑close mobile drawer
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState, clearListeners, refreshExamCache } from './state.js';
@@ -43,30 +43,29 @@ function renderHeader(activePage) {
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto py-6 px-4">
-      <div class="sidebar-menu-box space-y-1">
-        <button onclick="Router.student('dashboard')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'dashboard' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-home w-5 text-lg"></i> হোম
-        </button>
-        <button onclick="Router.student('courses')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'courses' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-book-open w-5 text-lg"></i> কোর্সসমূহ
-        </button>
-        <button onclick="Router.student('rank')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'rank' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-trophy w-5 text-lg"></i> র‍্যাংক
-        </button>
-        <button onclick="Router.student('results')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'results' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-clipboard-list w-5 text-lg"></i> ফলাফল
-        </button>
-        <button onclick="Router.student('analysis')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'analysis' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-chart-pie w-5 text-lg"></i> অগ্রগতি
-        </button>
-        <button onclick="Router.student('notices')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'notices' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-bell w-5 text-lg"></i> নোটিস
-        </button>
-        <button onclick="Router.student('management')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activePage === 'management' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}">
-          <i class="fas fa-cogs w-5 text-lg"></i> ম্যানেজমেন্ট
-        </button>
-      </div>
+    <div class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+      <!-- Each menu item is a separate box -->
+      <button onclick="Router.student('dashboard')" class="sidebar-menu-item ${activePage === 'dashboard' ? 'active' : ''}">
+        <i class="fas fa-home w-5 text-lg"></i> হোম
+      </button>
+      <button onclick="Router.student('courses')" class="sidebar-menu-item ${activePage === 'courses' ? 'active' : ''}">
+        <i class="fas fa-book-open w-5 text-lg"></i> কোর্সসমূহ
+      </button>
+      <button onclick="Router.student('rank')" class="sidebar-menu-item ${activePage === 'rank' ? 'active' : ''}">
+        <i class="fas fa-trophy w-5 text-lg"></i> র‍্যাংক
+      </button>
+      <button onclick="Router.student('results')" class="sidebar-menu-item ${activePage === 'results' ? 'active' : ''}">
+        <i class="fas fa-clipboard-list w-5 text-lg"></i> ফলাফল
+      </button>
+      <button onclick="Router.student('analysis')" class="sidebar-menu-item ${activePage === 'analysis' ? 'active' : ''}">
+        <i class="fas fa-chart-pie w-5 text-lg"></i> অগ্রগতি
+      </button>
+      <button onclick="Router.student('notices')" class="sidebar-menu-item ${activePage === 'notices' ? 'active' : ''}">
+        <i class="fas fa-bell w-5 text-lg"></i> নোটিস
+      </button>
+      <button onclick="Router.student('management')" class="sidebar-menu-item ${activePage === 'management' ? 'active' : ''}">
+        <i class="fas fa-cogs w-5 text-lg"></i> ম্যানেজমেন্ট
+      </button>
     </div>
   </aside>
 
@@ -138,16 +137,15 @@ function renderHeader(activePage) {
         }
       </select>
     </div>
-    <div class="px-3">
-      <div class="sidebar-menu-box space-y-1">
-        <div class="drawer-item" onclick="Router.student('dashboard'); toggleMobileDrawer()"><i class="fas fa-home"></i> হোম</div>
-        <div class="drawer-item" onclick="Router.student('courses'); toggleMobileDrawer()"><i class="fas fa-book-open"></i> কোর্সসমূহ</div>
-        <div class="drawer-item" onclick="Router.student('rank'); toggleMobileDrawer()"><i class="fas fa-trophy"></i> র‍্যাংক</div>
-        <div class="drawer-item" onclick="Router.student('results'); toggleMobileDrawer()"><i class="fas fa-clipboard-list"></i> ফলাফল</div>
-        <div class="drawer-item" onclick="Router.student('analysis'); toggleMobileDrawer()"><i class="fas fa-chart-pie"></i> অগ্রগতি</div>
-        <div class="drawer-item" onclick="Router.student('notices'); toggleMobileDrawer()"><i class="fas fa-bell"></i> নোটিস</div>
-        <div class="drawer-item" onclick="Router.student('management'); toggleMobileDrawer()"><i class="fas fa-cogs"></i> ম্যানেজমেন্ট</div>
-      </div>
+    <div class="px-3 space-y-2">
+      <!-- Individual boxes in mobile drawer, each auto‑closes the drawer -->
+      <div class="sidebar-menu-item" onclick="Router.student('dashboard'); toggleMobileDrawer()"><i class="fas fa-home"></i> হোম</div>
+      <div class="sidebar-menu-item" onclick="Router.student('courses'); toggleMobileDrawer()"><i class="fas fa-book-open"></i> কোর্সসমূহ</div>
+      <div class="sidebar-menu-item" onclick="Router.student('rank'); toggleMobileDrawer()"><i class="fas fa-trophy"></i> র‍্যাংক</div>
+      <div class="sidebar-menu-item" onclick="Router.student('results'); toggleMobileDrawer()"><i class="fas fa-clipboard-list"></i> ফলাফল</div>
+      <div class="sidebar-menu-item" onclick="Router.student('analysis'); toggleMobileDrawer()"><i class="fas fa-chart-pie"></i> অগ্রগতি</div>
+      <div class="sidebar-menu-item" onclick="Router.student('notices'); toggleMobileDrawer()"><i class="fas fa-bell"></i> নোটিস</div>
+      <div class="sidebar-menu-item" onclick="Router.student('management'); toggleMobileDrawer()"><i class="fas fa-cogs"></i> ম্যানেজমেন্ট</div>
     </div>
   </div>
 
