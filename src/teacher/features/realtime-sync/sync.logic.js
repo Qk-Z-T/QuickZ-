@@ -11,7 +11,6 @@ let unsubscribes = window.unsubscribes;
 let folderStructure = window.folderStructure;
 let ExamCache = window.ExamCache;
 
-// UI update helper
 function updateUIRendering() {
   const page = AppState.currentPage;
   const Teacher = window.Teacher;
@@ -32,7 +31,6 @@ function updateUIRendering() {
       case 'management':
         if (typeof Teacher.liveExamManagementView === 'function') Teacher.liveExamManagementView();
         break;
-      // create page no auto-refresh needed
     }
   } catch (error) {
     console.error('UI update error:', error);
@@ -56,7 +54,6 @@ export function initRealTimeSync() {
   if (!AppState.selectedGroup || !AppState.currentUser) return;
   clearListeners();
 
-  // Folder structure listener
   const folderDocRef = doc(db, "folderStructures", `${AppState.currentUser.id}_${AppState.selectedGroup.id}`);
   const unsubFolders = onSnapshot(folderDocRef, (docSnap) => {
     if (docSnap.exists()) {
@@ -72,7 +69,6 @@ export function initRealTimeSync() {
   });
   unsubscribes.push(unsubFolders);
 
-  // Exams listener
   const q = query(
     collection(db, "exams"),
     where("groupId", "==", AppState.selectedGroup.id)
@@ -96,7 +92,6 @@ export function clearListeners() {
   window.unsubscribes = unsubscribes;
 }
 
-// Expose globally
 window.saveFolderStructureToFirebase = saveFolderStructureToFirebase;
 window.initRealTimeSync = initRealTimeSync;
 window.clearListeners = clearListeners;
