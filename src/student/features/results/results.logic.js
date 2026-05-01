@@ -14,7 +14,7 @@ import {
   doc, getDoc, collection, query, where, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Local mutable filter state (was imported but is read-only)
+// Local mutable filter states (imported ones may be read‑only)
 let resultTypeFilter = 'live';
 let resultsSubjectFilter = 'all';
 
