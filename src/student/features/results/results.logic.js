@@ -12,11 +12,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // ---------- Local mutable filter & state ----------
-// (allows reassignment without “Assignment to constant variable” errors)
 let resultTypeFilter = 'live';
 let resultsSubjectFilter = 'all';
-
-// Used in detailed result view (not imported)
 let currentResultPage = 1;
 let resultFilter = 'all';
 let filteredQuestions = [];
@@ -142,7 +139,9 @@ export const ResultsManager = {
     contentEl.innerHTML = '<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>';
 
     try {
+      console.log('🔍 Fetching attempt:', attemptId);
       const attSnap = await getDoc(doc(db, "attempts", attemptId));
+      console.log('✅ Attempt exists:', attSnap.exists());
       if (!attSnap.exists()) throw new Error("ফলাফল পাওয়া যায়নি");
       const att = attSnap.data();
 
@@ -158,7 +157,6 @@ export const ResultsManager = {
       }
       const qs = questions;
 
-      // Reset local state for this detailed view
       currentResultPage = 1;
       resultFilter = 'all';
       filteredQuestions = [...qs];
@@ -253,8 +251,7 @@ export const ResultsManager = {
         loadMathJax(null, contentEl);
       };
 
-      // Attach filter/pagination methods to this ResultsManager instance
-      // (but we use the module-level variables now)
+      // Attach filter/pagination methods
       this.setResultFilter = (f) => {
         resultFilter = f;
         currentResultPage = 1;
@@ -286,11 +283,11 @@ export const ResultsManager = {
 
       updateView();
     } catch (error) {
+      console.error('❌ Detailed result error:', error);
       Swal.fire('ত্রুটি', 'ফলাফল লোড ব্যর্থ', 'error');
       Router.student('results');
     }
   }
 };
 
-// Global exposure
 window.ResultsManager = ResultsManager;
