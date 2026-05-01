@@ -2,7 +2,7 @@
 // Teacher portal router and page navigation – FIXED import path
 
 import { AppState } from './state.js';
-import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js'; // corrected path
+import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js'; // CORRECT path
 import { TeacherCore } from '../teacher-core.js';
 
 const validPages = ['home', 'create', 'rank', 'folders', 'management'];
