@@ -129,7 +129,8 @@ export const StudentDashboard = {
           </div>
         </div>
         <div class="grid grid-cols-1 gap-6">
-          <button id="live-exam-card" onclick="StudentDashboard.checkGroupAndLoad('live')" class="dashboard-card bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-xl">
+          <button id="live-exam-card" onclick="StudentDashboard.checkGroupAndLoad('live')"
+            class="glass-exam-card text-white shadow-xl">
             <div class="dashboard-card-indicator live-now"></div>
             <div class="dashboard-card-indicator upcoming"></div>
             <div class="dashboard-card-content">
@@ -137,7 +138,8 @@ export const StudentDashboard = {
               <div class="dashboard-card-title">Live exam</div>
             </div>
           </button>
-          <button onclick="StudentDashboard.checkGroupAndLoad('mock')" class="dashboard-card bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl">
+          <button onclick="StudentDashboard.checkGroupAndLoad('mock')"
+            class="glass-exam-card text-white shadow-xl">
             <div class="dashboard-card-content">
               <div class="dashboard-card-icon"><i class="fas fa-book-reader"></i></div>
               <div class="dashboard-card-title">Mock exam</div>
@@ -164,33 +166,39 @@ export const StudentDashboard = {
           `<img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-2xl">` :
           `<div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-2xl"><i class="fas fa-book-open"></i></div>`;
 
+        // Course card with toggle description, no extra buttons
         cardContainer.innerHTML = `
           ${imageHtml}
           <div class="p-5">
-            <div class="flex justify-between items-start mb-2">
+            <div class="flex justify-between items-start">
               <div>
                 <h3 class="text-xl font-bold dark:text-white bengali-text">${group.name}</h3>
-                <div class="flex items-center gap-2 mt-1">${classBadge} ${streamBadge}</div>
+                <p class="text-xs text-gray-500 mt-1">
+                  <i class="fas fa-user-tie mr-1"></i> ${group.teacherName || 'শিক্ষক'}
+                  <span class="mx-1 text-gray-300 dark:text-gray-600">|</span>
+                  ${group.studentIds?.length || 0} শিক্ষার্থী
+                </p>
               </div>
-              <div class="text-right">
-                <div class="text-2xl font-black text-indigo-600 dark:text-indigo-400">${group.studentIds?.length || 0}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">শিক্ষার্থী</div>
-              </div>
+              <div class="flex items-center gap-1">${classBadge} ${streamBadge}</div>
             </div>
-            <p class="text-xs text-gray-500 mb-1"><i class="fas fa-user-tie"></i> ${group.teacherName || 'শিক্ষক'}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-3">${group.description || 'কোনো বিবরণ নেই'}</p>
-            <div class="flex gap-2">
-              <button onclick="StudentDashboard.showGroupMembersModal('${AppState.activeGroupId}')" class="flex-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 py-2 rounded-lg text-xs font-bold">
-                <i class="fas fa-users mr-1"></i>সদস্য দেখুন
-              </button>
-              <button onclick="Router.student('courses')" class="flex-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 py-2 rounded-lg text-xs font-bold">
-                <i class="fas fa-plus mr-1"></i>নতুন কোর্স
-              </button>
+
+            <div id="course-desc" class="text-sm text-gray-600 dark:text-gray-400 mt-3 line-clamp-none hidden">
+              ${group.description || 'কোনো বিবরণ নেই'}
             </div>
+
+            <button onclick="
+              const desc = document.getElementById('course-desc');
+              const isHidden = desc.classList.toggle('hidden');
+              this.innerHTML = isHidden
+                ? '<i class=\\'fas fa-chevron-down mr-1\\'></i> বিস্তারিত দেখুন'
+                : '<i class=\\'fas fa-chevron-up mr-1\\'></i> লুকান'
+            " class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-3 flex items-center gap-1 hover:underline">
+              <i class="fas fa-chevron-down mr-1"></i> বিস্তারিত দেখুন
+            </button>
           </div>
         `;
 
-        // Check live exam indicators
+        // Check live exam indicators (keep existing logic)
         const snap = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
         const now = new Date();
         let hasOngoing = false, hasUpcoming = false;
@@ -240,7 +248,7 @@ export const StudentDashboard = {
     document.getElementById('group-code-modal').classList.remove('hidden');
   },
 
-  // ---- Group Members Modal ----
+  // ---- Group Members Modal (kept for other uses, but not called from homepage) ----
   async showGroupMembersModal(groupId) {
     const modal = document.getElementById('group-members-modal');
     const title = document.getElementById('group-members-title');
@@ -399,7 +407,6 @@ export const StudentDashboard = {
         if (e.resultPublished || (e.endTime && new Date(e.endTime) < now)) liveExams.push(e);
       });
 
-      // If no past live exams at all, show message
       if (liveExams.length === 0) {
         contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">পূর্বের লাইভ পরীক্ষা</h2><p class="text-gray-500">কোনো পরীক্ষা নেই</p></div>`;
         return;
@@ -493,13 +500,12 @@ export const StudentDashboard = {
     loadMathJax(null, contentEl);
   },
 
-  // ---- Mock Hub & Structure Navigation (FIXED) ----
+  // ---- Mock Hub & Structure Navigation ----
   async loadMockHub() {
     if (!AppState.activeGroupId) return;
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    // Offline first
     if (!navigator.onLine) {
       const cached = localStorage.getItem('mockFolderCache_' + AppState.activeGroupId);
       if (cached) {
@@ -520,7 +526,6 @@ export const StudentDashboard = {
       return;
     }
 
-    // Online
     let groupDoc;
     try {
       groupDoc = await getDoc(doc(db, "groups", AppState.activeGroupId));
