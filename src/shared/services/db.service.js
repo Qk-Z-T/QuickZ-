@@ -2,13 +2,14 @@
 // IndexedDB wrapper – now exports DB for ES modules
 
 const DB_NAME = 'QuickZOfflineDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;   // bumped version to add new store
 
 const STORES = {
   EXAMS: 'exams',
   RESULTS: 'results',
   QUESTIONS: 'questions',
-  SYNC_QUEUE: 'syncQueue'
+  SYNC_QUEUE: 'syncQueue',
+  OFFLINE_CACHE: 'offlineCache'   // NEW: for offline data caching
 };
 
 let dbPromise;
@@ -34,6 +35,10 @@ function openDB() {
         const store = db.createObjectStore(STORES.SYNC_QUEUE, { keyPath: 'id', autoIncrement: true });
         store.createIndex('by_status', 'status');
         store.createIndex('by_collection', 'collection');
+      }
+      // NEW: offline cache store
+      if (!db.objectStoreNames.contains(STORES.OFFLINE_CACHE)) {
+        db.createObjectStore(STORES.OFFLINE_CACHE, { keyPath: 'id' });
       }
     };
   });
