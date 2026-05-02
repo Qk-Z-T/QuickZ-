@@ -1,6 +1,5 @@
 // src/student/features/dashboard/dashboard.logic.js
-// Student dashboard, live & mock exam listing logic, rankings, notices
-// (ranking summary updated with glass-stat-item boxes)
+// Student dashboard, live & mock exam listing logic, rankings, notices (refined)
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes, lastMockContext } from '../../core/state.js';
@@ -9,7 +8,7 @@ import { loadMathJax } from '../../../shared/utils/dom-helper.js';
 import { MathHelper } from '../../../shared/utils/math-helper.js';
 import { renderRankRow } from '../../components/result-row.js';
 import {
-  doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
+  doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 let pastSubjectFilter = 'all';
@@ -22,6 +21,7 @@ function setPageContent(html) {
 }
 
 export const StudentDashboard = {
+  // ---- Course Switcher UI helpers ----
   toggleCourseSwitcher() {
     const menu = document.getElementById('course-switcher-menu');
     if (!menu) return;
@@ -72,36 +72,69 @@ export const StudentDashboard = {
     Swal.fire('সফল', 'কোর্স পরিবর্তন করা হয়েছে', 'success').then(() => Router.student('dashboard'));
   },
 
+  // ---- Notification listener (all joined groups, updates menu badge) ----
   initNotificationListener() {
-    if (!AppState.activeGroupId) return;
-    const uid = auth.currentUser.uid;
-    const q = query(collection(db, "notices"), where("groupId", "==", AppState.activeGroupId));
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    // Listen for notices in all joined groups
+    const groups = AppState.joinedGroups || [];
+    const groupIds = groups.map(g => g.groupId);
+
+    if (groupIds.length === 0) {
+      // no groups, clear badge
+      this._updateBadge(0);
+      return;
+    }
+
+    // For simplicity, we listen on the whole notices collection and filter by groupId.
+    // However, we can't use "in" query across multiple groups easily. We'll listen globally
+    // and compute unread per group, storing in AppState.unreadNoticeCounts.
+    const q = query(collection(db, "notices"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      let unreadCount = 0;
+      const counts = {};
+      let totalUnread = 0;
+
       snap.forEach(doc => {
         const data = doc.data();
-        if (!data.views || !data.views[uid]) unreadCount++;
+        const gid = data.groupId;
+        if (!gid || !groupIds.includes(gid)) return;
+
+        if (!counts[gid]) counts[gid] = 0;
+
+        // Check if user has viewed this notice
+        const views = data.views || {};
+        if (!views[uid]) {
+          counts[gid]++;
+          totalUnread++;
+        }
       });
-      const badge = document.getElementById('notification-badge');
-      const badgeMobile = document.getElementById('notification-badge-mobile');
-      if (badge) {
-        if (unreadCount > 0) {
-          badge.textContent = unreadCount;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
-      }
-      if (badgeMobile) {
-        if (unreadCount > 0) {
-          badgeMobile.textContent = unreadCount;
-          badgeMobile.classList.remove('hidden');
-        } else {
-          badgeMobile.classList.add('hidden');
-        }
-      }
+
+      AppState.unreadNoticeCounts = counts;
+      this._updateBadge(totalUnread);
     });
     unsubscribes.push(unsub);
+  },
+
+  _updateBadge(total) {
+    const badge = document.getElementById('notification-badge');
+    const badgeMobile = document.getElementById('notification-badge-mobile');
+    if (badge) {
+      if (total > 0) {
+        badge.textContent = total;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+    if (badgeMobile) {
+      if (total > 0) {
+        badgeMobile.textContent = total;
+        badgeMobile.classList.remove('hidden');
+      } else {
+        badgeMobile.classList.add('hidden');
+      }
+    }
   },
 
   // ---- Main Dashboard ----
@@ -646,7 +679,6 @@ export const StudentDashboard = {
       let myRank = null;
       rankedList.forEach((att, index) => { if (att.userId === uid) myRank = index + 1; });
 
-      // Updated summary with glass-stat-item boxes
       const summaryHtml = `
         <div class="glass-card p-5 rounded-2xl mb-6">
           <h3 class="text-xl font-bold mb-2 dark:text-white">${exam.title}</h3>
@@ -688,40 +720,147 @@ export const StudentDashboard = {
     } catch (e) { console.error(e); contentEl.innerHTML = '<div class="p-5 text-red-500">র‍্যাংকিং লোড করতে ত্রুটি</div>'; }
   },
 
-  // ---- Notices ----
+  // ---- Refined Notices & Polls ----
   async loadNotices() {
-    if (!AppState.activeGroupId) { Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning'); return; }
+    if (!AppState.activeGroupId) {
+      Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
+      return;
+    }
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
     try {
       const uid = auth.currentUser.uid;
-      const snap = await getDocs(query(collection(db, "notices"), where("groupId", "==", AppState.activeGroupId), orderBy("createdAt", "desc")));
+      // Real-time listener already set in initNotificationListener; here we fetch for display
+      const snap = await getDocs(query(
+        collection(db, "notices"),
+        where("groupId", "==", AppState.activeGroupId),
+        orderBy("createdAt", "desc")
+      ));
       const notices = [];
       snap.forEach(d => notices.push({ id: d.id, ...d.data() }));
 
+      // Mark as viewed (update views for this user) while rendering
       for (const n of notices) {
         const noticeRef = doc(db, "notices", n.id);
         const currentViews = n.views || {};
-        if (!currentViews[uid]) { currentViews[uid] = new Date(); await updateDoc(noticeRef, { views: currentViews }).catch(() => {}); }
+        if (!currentViews[uid]) {
+          currentViews[uid] = new Date();
+          await updateDoc(noticeRef, { views: currentViews }).catch(() => {});
+        }
       }
 
       let html = '';
       notices.forEach(n => {
         const isPoll = n.type === 'poll';
         const viewCount = Object.keys(n.views || {}).length;
-        let pollSection = '';
-        if (isPoll && n.options) { const votes = n.votes || {}; const totalVotes = Object.keys(votes).length; pollSection = `<div class="mt-2 text-sm"><b>ভোট:</b> ${totalVotes}</div>`; }
+        const votes = n.votes || {};
+        const totalVotes = Object.keys(votes).length;
+        const myVote = votes[uid]; // the option index the user voted for, if any
 
-        html += `<div class="bg-white dark:bg-gray-800 p-4 rounded-xl border mb-3">
-          <div class="flex justify-between"><span class="text-xs bg-indigo-100 px-2 py-1 rounded">${isPoll ? 'পোল' : 'নোটিশ'}</span><span class="text-xs text-gray-500">${moment(n.createdAt?.toDate()).format('DD MMM, YYYY')}</span></div>
-          <h3 class="font-bold mt-2">${n.title}</h3>${n.content ? `<p class="text-sm mt-1">${n.content}</p>` : ''}${pollSection}
-          <div class="text-xs text-gray-400 mt-2"><i class="far fa-eye"></i> ${viewCount} জন দেখেছেন</div>
-        </div>`;
+        let pollSection = '';
+        if (isPoll && n.options && n.options.length > 0) {
+          // Build option bars
+          const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
+          const counts = {};
+          n.options.forEach((_, i) => { counts[i] = 0; });
+          Object.values(votes).forEach(optIdx => {
+            if (counts[optIdx] !== undefined) counts[optIdx]++;
+          });
+
+          const optionsHtml = n.options.map((opt, i) => {
+            const count = counts[i] || 0;
+            const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+            const isMyVote = myVote !== undefined && myVote == i;
+            const barColor = colors[i % colors.length];
+            return `
+              <div class="mb-2">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-sm font-medium dark:text-white">${opt}${isMyVote ? ' <span class="text-xs text-indigo-600 font-bold">(আপনার ভোট)</span>' : ''}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">${count} ভোট (${pct}%)</span>
+                </div>
+                <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-500" style="width: ${pct}%; background: ${barColor};"></div>
+                </div>
+              </div>`;
+          }).join('');
+
+          const voteButton = myVote === undefined
+            ? `<div class="mt-2 text-xs text-gray-400">ভোট দিতে অপশনে ক্লিক করুন</div>
+               <div class="flex gap-2 mt-2">${n.options.map((opt, i) => `
+                 <button onclick="StudentDashboard.castVote('${n.id}', ${i})" class="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold transition">${opt}</button>
+               `).join('')}</div>`
+            : `<div class="mt-2 text-xs text-green-600 font-bold">আপনি ভোট দিয়েছেন</div>`;
+
+          pollSection = `
+            <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <div class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">পোল ফলাফল (মোট ${totalVotes} ভোট)</div>
+              ${optionsHtml}
+              ${voteButton}
+            </div>`;
+        }
+
+        html += `
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 mb-3 shadow-sm">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPoll ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'}">
+                    ${isPoll ? '📊 পোল' : '📢 নোটিশ'}
+                  </span>
+                  <span class="text-xs text-gray-400 dark:text-gray-500">
+                    ${moment(n.createdAt?.toDate()).format('DD MMM, YYYY h:mm A')}
+                  </span>
+                </div>
+                <h3 class="font-bold text-base dark:text-white mt-1">${n.title}</h3>
+                ${!isPoll && n.content ? `<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">${n.content}</p>` : ''}
+                <div class="flex items-center gap-4 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                  <span><i class="far fa-eye mr-1"></i> ${viewCount} জন দেখেছেন</span>
+                </div>
+              </div>
+            </div>
+            ${pollSection}
+          </div>`;
       });
 
-      contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">নোটিশ ও পোল</h2>${html || '<p class="text-gray-500">কোনো নোটিশ নেই</p>'}</div>`;
-    } catch (e) { console.error(e); contentEl.innerHTML = '<div class="p-5 text-red-500">নোটিশ লোড করতে ত্রুটি</div>'; }
+      contentEl.innerHTML = `
+        <div class="p-5 pb-20">
+          <h2 class="text-xl font-bold mb-4 dark:text-white">নোটিশ ও পোল</h2>
+          ${html || '<p class="text-gray-500 dark:text-gray-400 text-center">কোনো নোটিশ নেই</p>'}
+        </div>`;
+    } catch (e) {
+      console.error(e);
+      contentEl.innerHTML = '<div class="p-5 text-red-500">নোটিশ লোড করতে ত্রুটি</div>';
+    }
+  },
+
+  async castVote(noticeId, optionIndex) {
+    const uid = auth.currentUser.uid;
+    if (!uid) return;
+    try {
+      // Use arrayUnion to add the vote; Firestore prevents duplicates if we check first
+      const noticeRef = doc(db, "notices", noticeId);
+      const noticeSnap = await getDoc(noticeRef);
+      if (!noticeSnap.exists()) return;
+
+      const data = noticeSnap.data();
+      const votes = data.votes || {};
+      // If user already voted, do nothing
+      if (votes[uid] !== undefined) {
+        Swal.fire('ইতিমধ্যে ভোট দেওয়া হয়েছে', 'আপনি একবারই ভোট দিতে পারবেন', 'info');
+        return;
+      }
+
+      // Add vote
+      votes[uid] = optionIndex;
+      await updateDoc(noticeRef, { votes: votes });
+
+      // Refresh the notices display
+      this.loadNotices();
+    } catch (e) {
+      console.error(e);
+      Swal.fire('ত্রুটি', 'ভোট প্রদান ব্যর্থ', 'error');
+    }
   }
 };
 
