@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view – glass cards
+// Student results listing, filtering, and detailed result view – fixed stat cards
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -222,7 +222,7 @@ export const ResultsManager = {
         contentEl.innerHTML = `
           <div class="p-5 pb-24">
             <button onclick="Router.student('results')" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ফলাফল তালিকা</button>
-            <!-- Glass summary card -->
+            <!-- Glass summary card with individual stat boxes -->
             <div class="glass-card p-5 rounded-2xl mb-6">
               <div class="flex justify-between items-start mb-4">
                 <div>
@@ -235,11 +235,11 @@ export const ResultsManager = {
                 </div>
               </div>
               <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mt-2">
-                <div class="glass-stat-item"><div class="font-bold">${totalQ}</div><div class="text-[10px] text-gray-500">মোট</div></div>
-                <div class="glass-stat-item"><div class="font-bold text-green-600">${correct}</div><div class="text-[10px] text-gray-500">সঠিক</div></div>
-                <div class="glass-stat-item"><div class="font-bold text-red-500">${wrong}</div><div class="text-[10px] text-gray-500">ভুল</div></div>
-                <div class="glass-stat-item"><div class="font-bold">${skipped}</div><div class="text-[10px] text-gray-500">স্কিপ</div></div>
-                <div class="glass-stat-item"><div class="font-bold">${timeStr}</div><div class="text-[10px] text-gray-500">সময়</div></div>
+                <div class="glass-stat-item"><div class="font-bold dark:text-white">${totalQ}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">মোট</div></div>
+                <div class="glass-stat-item"><div class="font-bold text-green-600">${correct}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">সঠিক</div></div>
+                <div class="glass-stat-item"><div class="font-bold text-red-500">${wrong}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">ভুল</div></div>
+                <div class="glass-stat-item"><div class="font-bold dark:text-white">${skipped}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">স্কিপ</div></div>
+                <div class="glass-stat-item"><div class="font-bold dark:text-white">${timeStr}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">সময়</div></div>
                 <div class="glass-stat-item">${StarRating(accuracy)}</div>
               </div>
             </div>
