@@ -1,65 +1,9 @@
 // src/student/features/management/management.view.js
-// Student management page UI sections
+// Student management page UI – teacher section removed
 
-export function renderTeacherSection(teacherCodes, teacherNames, activeTeacherCode) {
-  if (!teacherCodes || teacherCodes.length === 0) {
-    return `
-      <div class="mb-6">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="font-bold text-lg dark:text-white">শিক্ষক অ্যাকাউন্ট</h3>
-          <button onclick="ManagementManager.addTeacherCode()" class="text-sm bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg font-bold">
-            <i class="fas fa-plus mr-1"></i> যোগ করুন
-          </button>
-        </div>
-        <div class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
-          <i class="fas fa-exclamation-triangle mr-2"></i>
-          কোনো শিক্ষক অ্যাকাউন্ট যোগ করা হয়নি। পরীক্ষা দেখতে অন্তত একটি শিক্ষক অ্যাকাউন্ট প্রয়োজন।
-        </div>
-      </div>`;
-  }
-
-  const activeTeacher = teacherCodes.find(tc => tc.active);
-  const activeName = activeTeacher ? (teacherNames[activeTeacher.code] || 'Unknown') : 'শিক্ষক নির্বাচন করুন';
-
-  let dropdownHtml = teacherCodes.map(tc => {
-    const name = teacherNames[tc.code] || 'Unknown Teacher';
-    return `
-      <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer text-sm border-b dark:border-gray-700 flex justify-between items-center ${tc.active ? 'bg-indigo-50 dark:bg-indigo-900' : ''}">
-        <div class="flex-1" onclick="ManagementManager.switchTeacherCode('${tc.code}')">${name}</div>
-        ${teacherCodes.length > 1 ? `<button onclick="event.stopPropagation(); ManagementManager.confirmDeleteTeacher('${tc.code}')" class="text-red-500 hover:text-red-700 ml-2" title="মুছুন"><i class="fas fa-trash"></i></button>` : ''}
-        ${tc.active ? '<i class="fas fa-check text-green-500 ml-1"></i>' : ''}
-      </div>`;
-  }).join('');
-
-  return `
-    <div class="mb-6">
-      <div class="flex justify-between items-center mb-3">
-        <h3 class="font-bold text-lg dark:text-white">শিক্ষক অ্যাকাউন্ট</h3>
-        <button onclick="ManagementManager.addTeacherCode()" class="text-sm bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg font-bold">
-          <i class="fas fa-plus mr-1"></i> যোগ করুন
-        </button>
-      </div>
-      <div class="relative">
-        <button onclick="document.getElementById('teacher-drop').classList.toggle('hidden')" class="flex items-center justify-between w-full px-4 py-3 rounded-xl text-indigo-600 dark:text-indigo-400 font-bold text-sm transition border border-indigo-100 dark:border-indigo-800 bg-white dark:bg-gray-700">
-          <div class="flex items-center gap-2">
-            <i class="fas fa-chalkboard-teacher"></i>
-            <span>${activeName}</span>
-            ${activeTeacher ? '<span class="text-xs bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 px-2 py-1 rounded">সক্রিয়</span>' : ''}
-          </div>
-          <i class="fas fa-chevron-down text-xs"></i>
-        </button>
-        <div id="teacher-drop" class="hidden absolute top-12 left-0 w-full bg-white dark:bg-gray-700 border dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden mt-1">
-          ${dropdownHtml}
-          <div onclick="ManagementManager.addTeacherCode()" class="p-3 text-indigo-600 dark:text-indigo-400 font-bold text-center text-xs cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-600 border-t dark:border-gray-700">
-            <i class="fas fa-plus-circle mr-1"></i> নতুন শিক্ষক যোগ করুন
-          </div>
-        </div>
-      </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-        <i class="fas fa-info-circle mr-1"></i>
-        শিক্ষক অ্যাকাউন্ট নির্বাচন করুন। একসাথে কেবল একটি সক্রিয় থাকতে পারে।
-      </p>
-    </div>`;
+export function renderTeacherSection() {
+  // No teacher code needed anymore
+  return '';
 }
 
 export function renderJoinedGroupsSection(joinedGroups, activeGroupId) {
@@ -142,7 +86,6 @@ export function renderManagementContainer(teacherSection, groupsSection, passwor
     <div class="p-5 pb-20 max-w-md mx-auto">
       <h2 class="text-2xl font-bold mb-4 text-center dark:text-white">ম্যানেজমেন্ট</h2>
       <div class="p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-6">
-        ${teacherSection}
         ${groupsSection}
         ${passwordSection}
         <button onclick="Auth.confirmLogout()" class="w-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 py-3 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/50 transition">
