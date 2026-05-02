@@ -1,367 +1,331 @@
-/* src/student/styles.css */
-/* Student‑specific styles */
+// src/student/features/courses/courses.logic.js
+// Course listing, filtering, joining logic – description expand/collapse,
+// persistent search & filter state, class badge on cards,
+// ONLY SHOW COURSES THAT HAVE A CLASS LEVEL,
+// Unread notice counts displayed on each course card
 
-/* ---- Dashboard cards (old) ---- */
-.dashboard-card {
-    height: 160px;
-    border-radius: 24px;
-    padding: 24px;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    transition: all 0.3s ease;
-    color: white;
-}
-.dashboard-card-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    width: 100%;
-    height: 100%;
-}
-.dashboard-card-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 15px;
-    background: rgba(0,0,0,0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-}
-.dashboard-card-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 5px;
-}
-.dashboard-card-indicator {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: none;
-}
-.dashboard-card.has-live .live-now {
-    display: block;
-    background-color: #ef4444;
-    animation: pulse-red 2s infinite;
-}
-.dashboard-card.has-upcoming .upcoming {
-    display: block;
-    background-color: #f59e0b;
-    animation: pulse-yellow 2s infinite;
-}
-@keyframes pulse-red {
-    0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
-    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-}
-@keyframes pulse-yellow {
-    0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(245,158,11,0); }
-    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
-}
+import { auth, db } from '../../../shared/config/firebase.js';
+import { AppState, refreshExamCache } from '../../core/state.js';
+import { Router } from '../../core/router.js';
+import {
+  collection, query, where, getDocs, doc, getDoc, updateDoc, addDoc
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-/* ---- Glass morphism for exam cards (ENHANCED) ---- */
-.glass-exam-card {
-    height: 160px;
-    border-radius: 24px;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    transition: all 0.3s ease;
-    background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.05));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #1e293b;
-}
-.dark .glass-exam-card {
-    background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;
-}
-.glass-exam-card .dashboard-card-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    width: 100%;
-    height: 100%;
-}
-/* FIXED: icon circle now clearly visible */
-.glass-exam-card .dashboard-card-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 15px;
-    background: rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    color: inherit;
-}
-.glass-exam-card .dashboard-card-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 5px;
-    text-shadow: 0 2px 6px rgba(255,255,255,0.3);
-}
-.glass-exam-card .dashboard-card-indicator {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: none;
-}
-.glass-exam-card.has-live .live-now {
-    display: block;
-    background-color: #ef4444;
-    animation: pulse-red 2s infinite;
-}
-.glass-exam-card.has-upcoming .upcoming {
-    display: block;
-    background-color: #f59e0b;
-    animation: pulse-yellow 2s infinite;
-}
+export const CoursesManager = {
+  async loadCourses() {
+    const contentEl = document.getElementById('page-content');
+    if (!contentEl) return;
+    contentEl.innerHTML = `
+      <div class="p-5 pb-20">
+        <h2 class="text-2xl font-bold mb-4 text-center">কোর্সসমূহ</h2>
+        <div class="text-center p-10"><div class="quick-loader mx-auto"></div></div>
+      </div>`;
 
-/* ---- Review panel ---- */
-.review-panel-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #10b981;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    transition: all 0.3s;
-}
-.review-panel-btn:hover {
-    background: #0da271;
-    transform: scale(1.1);
-}
-.review-panel {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    background: var(--card-bg, white);
-    border: 1px solid var(--border-light, #e2e8f0);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,0.1));
-    padding: 15px;
-    z-index: 1000;
-    width: 250px;
-    max-height: 300px;
-    overflow-y: auto;
-    display: none;
-}
-.review-panel.show { display: block; }
-.question-numbers { display: flex; flex-wrap: wrap; gap: 8px; }
-.question-number-btn {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: bold; cursor: pointer;
-    border: 1px solid var(--border-light);
-    background: var(--bg-secondary, white);
-    color: var(--text-primary);
-}
-.question-number-btn.answered { background: #10b981; color: white; border-color: #10b981; }
-.question-number-btn.current-view { border: 2px solid #4f46e5; transform: scale(1.1); }
+    try {
+      const q = query(
+        collection(db, "groups"),
+        where("archived", "==", false),
+        where("joinEnabled", "==", true)
+      );
+      const snap = await getDocs(q);
+      const allGroups = [];
+      snap.forEach(doc => allGroups.push({ id: doc.id, ...doc.data() }));
 
-/* ---- Option buttons in exam ---- */
-.option-btn {
-    transition: all 0.2s;
-    border: 1px solid var(--border-light);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-.option-btn.selected {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    box-shadow: 0 0 0 1px rgba(59,130,246,0.2);
-}
-.dark .option-btn.selected { background: #1e3a5f; border-color: #60a5fa; }
-.option-btn.locked { opacity: 0.8; pointer-events: none; }
+      window.allCoursesList = allGroups;
+      this.renderCourseList();
+    } catch (error) {
+      console.error(error);
+      contentEl.innerHTML = `<div class="p-5 text-center text-red-500">কোর্স লোড করতে ত্রুটি</div>`;
+    }
+  },
 
-/* ---- Answer script cards ---- */
-.ans-card.correct { border-left: 4px solid #10b981; background: #f0fdf4; }
-.dark .ans-card.correct { background: #064e3b; }
-.ans-card.wrong { border-left: 4px solid #ef4444; background: #fef2f2; }
-.dark .ans-card.wrong { background: #7f1d1d; }
-.ans-card.skipped { border-left: 4px solid #f59e0b; background: #fffbeb; }
-.dark .ans-card.skipped { background: #78350f; }
-.opt-res { padding: 10px; border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 6px; background: var(--bg-secondary); }
-.opt-res.right { background: #d1fae5; border-color: #10b981; color: #047857; font-weight: bold; }
-.dark .opt-res.right { background: #065f46; color: #d1fae5; }
-.opt-res.wrong-select { background: #fee2e2; border-color: #ef4444; color: #b91c1c; text-decoration: line-through; }
-.dark .opt-res.wrong-select { background: #7f1d1d; color: #fca5a5; }
+  renderCourseList() {
+    const contentEl = document.getElementById('page-content');
+    if (!contentEl) return;
+    const allGroups = window.allCoursesList || [];
+    const studentClass = AppState.classLevel || '';
+    const studentStream = AppState.admissionStream || '';
+    const joinedGroupIds = (AppState.joinedGroups || []).map(g => g.groupId);
 
-/* ---- Filter buttons ---- */
-.filter-btn {
-    padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold;
-    cursor: pointer; border: 1px solid var(--border-light);
-    background: var(--bg-secondary); color: var(--text-secondary);
-}
-.filter-btn.active { color: white; }
-.filter-btn.correct.active { background: #10b981; border-color: #10b981; }
-.filter-btn.wrong.active { background: #ef4444; border-color: #ef4444; }
-.filter-btn.skipped.active { background: #f59e0b; border-color: #f59e0b; }
+    const currentSearchTerm = (document.getElementById('course-search-input')?.value || '').trim();
+    const currentFilterClass = document.getElementById('course-filter-class')?.value || 'all';
+    const currentStreamFilter = document.getElementById('course-filter-stream')?.value || 'all';
 
-/* ---- Compact summary cards (old) ---- */
-.compact-summary-card {
-    background: var(--card-bg); border: 1px solid var(--border-light);
-    border-radius: 16px; padding: 20px; margin-bottom: 20px;
-}
-.compact-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-.compact-title { font-size: 18px; font-weight: bold; color: var(--text-primary); }
-.compact-score { font-size: 32px; font-weight: bold; color: #4f46e5; line-height: 1; }
-.compact-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
-.compact-stat-item { background: var(--hover-bg); border-radius: 10px; padding: 10px; text-align: center; border: 1px solid var(--border-light); }
+    const searchTerm = currentSearchTerm.toLowerCase();
 
-/* ---- Profile form ---- */
-.profile-form-container { background: var(--card-bg); border-radius: 16px; padding: 20px; border: 1px solid var(--border-light); }
-.form-group { margin-bottom: 15px; }
-.form-label { display: block; font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
-.form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-light); border-radius: 8px; font-size: 14px; background: var(--input-bg); color: var(--text-primary); }
-.form-input:focus { outline: none; border-color: #4f46e5; }
-.required { color: #ef4444; }
+    // Only courses with a class level
+    let filtered = allGroups.filter(g => {
+      if (!g.classLevel) return false;
+      if (currentFilterClass !== 'all') {
+        if (g.classLevel !== currentFilterClass) return false;
+        if (currentFilterClass === 'Admission') {
+          if (currentStreamFilter && currentStreamFilter !== 'all' && g.admissionStream !== currentStreamFilter) return false;
+        }
+      }
+      if (searchTerm) {
+        const name = (g.name || '').toLowerCase();
+        const teacher = (g.teacherName || '').toLowerCase();
+        const desc = (g.description || '').toLowerCase();
+        if (!name.includes(searchTerm) && !teacher.includes(searchTerm) && !desc.includes(searchTerm)) return false;
+      }
+      return true;
+    });
 
-/* ---- Course switcher ---- */
-.course-switcher-dropdown { position: relative; }
+    // Sort matching class first
+    filtered.sort((a, b) => {
+      if (a.classLevel === studentClass && b.classLevel !== studentClass) return -1;
+      if (a.classLevel !== studentClass && b.classLevel === studentClass) return 1;
+      return 0;
+    });
 
-/* ---- Drawer items (old) ---- */
-.drawer-item { display: flex; align-items: center; gap: 15px; padding: 14px 16px; border-radius: 12px; font-size: 16px; font-weight: 500; margin-bottom: 6px; cursor: pointer; color: var(--text-primary); background: var(--hover-bg); border: 1px solid var(--border-light); }
-.drawer-item i { width: 24px; color: #4f46e5; }
+    const classLevels = ['6', '7', '8', 'SSC', 'HSC', 'Admission'];
+    const classOptions = classLevels.map(lvl =>
+      `<option value="${lvl}" ${lvl === currentFilterClass ? 'selected' : ''}>${lvl === 'Admission' ? 'এডমিশন' : (lvl === 'SSC' ? 'এসএসসি' : (lvl === 'HSC' ? 'এইচএসসি' : lvl+'ম শ্রেণী'))}</option>`
+    ).join('');
 
-/* ---- Login button ---- */
-.login-btn { position: relative; overflow: hidden; }
-.login-btn .btn-text { transition: opacity 0.3s; }
-.login-btn.loading .btn-text { opacity: 0; }
-.login-btn .loader-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+    const streamOptions = `
+      <option value="all" ${currentStreamFilter === 'all' ? 'selected' : ''}>সব শাখা</option>
+      <option value="Science" ${currentStreamFilter === 'Science' ? 'selected' : ''}>সায়েন্স</option>
+      <option value="Humanities" ${currentStreamFilter === 'Humanities' ? 'selected' : ''}>মানবিক</option>
+      <option value="Commerce" ${currentStreamFilter === 'Commerce' ? 'selected' : ''}>কমার্স</option>`;
 
-/* ---- Offline toasts ---- */
-.offline-toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    max-width: 400px; width: calc(100% - 40px); padding: 12px 20px;
-    border-radius: 12px; color: white; font-weight: 600; font-size: 14px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 99999;
-    display: flex; align-items: center; justify-content: space-between;
-}
-.toast-success { background: linear-gradient(135deg, #10b981, #059669); }
-.toast-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    const unreadCounts = AppState.unreadNoticeCounts || {};
 
-/* ---- Individual sidebar menu items (boxed) ---- */
-.sidebar-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.2s;
-    cursor: pointer;
-    border: 1px solid var(--border-light, #e2e8f0);
-    background: var(--card-bg, white);
-    color: var(--text-primary, #475569);
-}
-.dark .sidebar-menu-item {
-    border-color: var(--border-light, #475569);
-    background: var(--card-bg, #1e293b);
-    color: #cbd5e1;
-}
-.sidebar-menu-item i {
-    width: 24px;
-    font-size: 1.1rem;
-    color: inherit;
-}
-.sidebar-menu-item.active,
-.sidebar-menu-item:hover {
-    background: var(--hover-bg, #f8fafc);
-    border-color: #4f46e5;
-    color: #4f46e5;
-}
-.dark .sidebar-menu-item.active,
-.dark .sidebar-menu-item:hover {
-    background: #1e293b;
-    border-color: #6366f1;
-    color: #818cf8;
-}
+    const courseCards = filtered.length > 0 ? filtered.map(group => {
+      const isJoined = joinedGroupIds.includes(group.id);
+      const joinMethodText = {
+        public: 'পাবলিক',
+        code: 'কোর্স কোড',
+        permission: 'পারমিশন কী'
+      }[group.joinMethod] || 'কোর্স কোড';
 
-/* Mobile drawer overrides */
-.mobile-drawer .sidebar-menu-item {
-    border-radius: 10px;
-    padding: 12px 16px;
-}
+      const classBadge = group.classLevel ?
+        `<span class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">${group.classLevel === 'Admission' ? 'এডমিশন' : group.classLevel}</span>` : '';
+      const streamBadge = group.admissionStream ?
+        `<span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 ml-1">${group.admissionStream}</span>` : '';
 
-/* ---- Blue course card helper (used on homepage) ---- */
-.blue-course-card {
-    background: linear-gradient(135deg, #4f46e5, #3b82f6);
-    color: white;
-}
-.dark .blue-course-card {
-    background: linear-gradient(135deg, #4338ca, #2563eb);
-}
-.blue-course-card .badge-on-blue {
-    background: rgba(255,255,255,0.2);
-    color: white;
-}
+      const unread = unreadCounts[group.id] || 0;
+      const unreadBadge = unread > 0 ? `<span class="absolute top-2 right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">${unread}</span>` : '';
 
-/* ---- Glass card styles for results & ranking (UPDATED) ---- */
-.glass-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    color: #1e293b;
-    transition: all 0.3s ease;
-}
-.dark .glass-card {
-    background: rgba(0, 0, 0, 0.25);
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;
-}
+      const imageHtml = group.imageUrl ?
+        `<div class="relative"><img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-xl" alt="${group.name}">${unreadBadge}</div>` :
+        `<div class="relative"><div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-xl"><i class="fas fa-book-open"></i></div>${unreadBadge}</div>`;
 
-/* Stat items inside glass cards */
-.glass-stat-item {
-    background: rgba(255, 255, 255, 0.35);
-    border-radius: 10px;
-    padding: 10px;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    font-weight: 600;
-}
-.dark .glass-stat-item {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #e2e8f0;
-}
+      const actionButton = isJoined
+        ? `<button class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 py-2 rounded-lg text-sm font-bold" disabled><i class="fas fa-check-circle"></i> জয়েন করেছেন</button>`
+        : `<button onclick="CoursesManager.joinCourse('${group.id}', '${group.joinMethod}', '${group.groupCode || ''}')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition">জয়েন করুন</button>`;
+
+      const desc = group.description || '';
+      const descHtml = desc ? `
+        <div class="mb-3">
+          <p id="desc-${group.id}" class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">${desc}</p>
+          <button onclick="
+            const d = document.getElementById('desc-${group.id}');
+            const clamped = d.classList.toggle('line-clamp-1');
+            this.innerHTML = clamped ? 'আরও দেখুন <i class=\\'fas fa-chevron-down ml-1\\'></i>' : 'লুকান <i class=\\'fas fa-chevron-up ml-1\\'></i>';
+          " class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline mt-1 inline-flex items-center">
+            আরও দেখুন <i class="fas fa-chevron-down ml-1"></i>
+          </button>
+        </div>` : '<div class="mb-3"></div>';
+
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border overflow-hidden transition hover:shadow-md">
+          ${imageHtml}
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-bold text-lg dark:text-white">${group.name}</h3>
+              <div class="flex items-center gap-1">${classBadge}${streamBadge}</div>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1"><i class="fas fa-user-tie"></i> ${group.teacherName || 'শিক্ষক'}</p>
+            ${descHtml}
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full">${joinMethodText}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400"><i class="fas fa-users"></i> ${group.studentIds?.length || 0} শিক্ষার্থী</span>
+            </div>
+            ${actionButton}
+          </div>
+        </div>`;
+    }).join('') : `<div class="col-span-2 text-center p-10 text-gray-400">কোনো কোর্স পাওয়া যায়নি</div>`;
+
+    contentEl.innerHTML = `
+      <div class="p-5 pb-20">
+        <h2 class="text-2xl font-bold mb-2 text-center dark:text-white">কোর্সসমূহ</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">আপনার পছন্দের কোর্স খুঁজুন ও জয়েন করুন</p>
+
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">সার্চ</label>
+              <input type="text" id="course-search-input" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white" placeholder="কোর্সের নাম, শিক্ষক...">
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">ক্লাস/লেভেল</label>
+              <select id="course-filter-class" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white">
+                <option value="all">সব ক্লাস</option>
+                ${classOptions}
+              </select>
+            </div>
+            <div id="stream-filter-container" style="display:${currentFilterClass === 'Admission' ? 'block' : 'none'};">
+              <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">শাখা</label>
+              <select id="course-filter-stream" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white">
+                ${streamOptions}
+              </select>
+            </div>
+            <div class="flex items-end">
+              <button onclick="CoursesManager.applyFilter()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-bold transition">
+                ফিল্টার
+              </button>
+            </div>
+          </div>
+          ${studentClass ? `<p class="text-xs text-indigo-600 dark:text-indigo-400 mt-3"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '('+studentStream+')' : ''}</p>` : ''}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="course-list-container">
+          ${courseCards}
+        </div>
+      </div>`;
+
+    // Restore search term value
+    const searchInput = document.getElementById('course-search-input');
+    if (searchInput) {
+      searchInput.value = currentSearchTerm;
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') CoursesManager.applyFilter();
+      });
+    }
+
+    // Restore class filter selection
+    const classSelect = document.getElementById('course-filter-class');
+    const streamContainer = document.getElementById('stream-filter-container');
+    if (classSelect) {
+      classSelect.value = currentFilterClass;
+      classSelect.addEventListener('change', function () {
+        streamContainer.style.display = this.value === 'Admission' ? 'block' : 'none';
+      });
+    }
+
+    // Restore stream filter selection
+    const streamSelect = document.getElementById('course-filter-stream');
+    if (streamSelect) {
+      streamSelect.value = currentStreamFilter;
+    }
+  },
+
+  applyFilter() {
+    this.renderCourseList();
+  },
+
+  async joinCourse(groupId, joinMethod, groupCode) {
+    if (!navigator.onLine) {
+      Swal.fire('অফলাইন', 'ইন্টারনেট সংযোগ ছাড়া কোর্সে জয়েন করা যাবে না।', 'warning');
+      return;
+    }
+
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      if (joinMethod === 'public') {
+        await this.addToGroupDirectly(groupId);
+        return;
+      }
+
+      if (joinMethod === 'code') {
+        const { value: code } = await Swal.fire({
+          title: 'কোর্স কোড লিখুন',
+          input: 'text',
+          inputPlaceholder: 'কোর্স কোড',
+          showCancelButton: true,
+          inputValidator: (val) => !val ? 'কোর্স কোড আবশ্যক' : null
+        });
+        if (!code) return;
+        if (code !== groupCode) {
+          Swal.fire('ত্রুটি', 'ভুল কোর্স কোড', 'error');
+          return;
+        }
+        await this.addToGroupDirectly(groupId);
+        return;
+      }
+
+      if (joinMethod === 'permission') {
+        const { value: key } = await Swal.fire({
+          title: 'পারমিশন কী লিখুন',
+          input: 'text',
+          inputPlaceholder: 'যেমন: abcde-12345',
+          showCancelButton: true,
+          inputValidator: (val) => !val ? 'পারমিশন কী আবশ্যক' : null
+        });
+        if (!key) return;
+
+        const groupDoc = await getDoc(doc(db, "groups", groupId));
+        if (!groupDoc.exists()) throw new Error("কোর্স নেই");
+        const group = groupDoc.data();
+
+        if (group.permissionKey !== key || group.permissionKeyUsed) {
+          Swal.fire('ত্রুটি', 'ভুল বা ব্যবহৃত পারমিশন কী', 'error');
+          return;
+        }
+
+        await updateDoc(doc(db, "groups", groupId), {
+          permissionKeyUsed: true,
+          permissionKeyUsedBy: user.uid,
+          permissionKeyUsedAt: new Date()
+        });
+
+        await this.addToGroupDirectly(groupId);
+      }
+    } catch (error) {
+      Swal.fire('ত্রুটি', error.message, 'error');
+    }
+  },
+
+  async addToGroupDirectly(groupId) {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    if ((AppState.joinedGroups || []).find(g => g.groupId === groupId)) {
+      Swal.fire('তথ্য', 'আপনি ইতিমধ্যে এই কোর্সে জয়েন করেছেন', 'info');
+      return;
+    }
+
+    const groupSnap = await getDoc(doc(db, "groups", groupId));
+    if (!groupSnap.exists()) throw new Error("কোর্স নেই");
+    const groupData = groupSnap.data();
+
+    if (groupData.approvalRequired) {
+      await addDoc(collection(db, "join_requests"), {
+        studentId: user.uid,
+        studentName: AppState.userProfile?.name || user.displayName,
+        studentEmail: user.email,
+        groupId: groupId,
+        teacherId: groupData.teacherId,
+        status: 'pending',
+        requestedAt: new Date()
+      });
+      Swal.fire('অনুরোধ পাঠানো হয়েছে', 'শিক্ষক অনুমোদন করলে আপনি কোর্সে যুক্ত হবেন।', 'success');
+      return;
+    }
+
+    const studentIds = groupData.studentIds || [];
+    if (!studentIds.includes(user.uid)) {
+      studentIds.push(user.uid);
+      await updateDoc(doc(db, "groups", groupId), { studentIds });
+    }
+
+    const joined = AppState.joinedGroups || [];
+    joined.push({ groupId, groupName: groupData.name });
+    await updateDoc(doc(db, "students", user.uid), { joinedGroups: joined });
+
+    AppState.joinedGroups = joined;
+    AppState.activeGroupId = groupId;
+    localStorage.setItem('activeGroupId', groupId);
+    localStorage.setItem('userProfile', JSON.stringify(AppState.userProfile));
+
+    Swal.fire('সফল', `"${groupData.name}" কোর্সে জয়েন করেছেন`, 'success').then(() => {
+      refreshExamCache();
+      Router.student('dashboard');
+    });
+  }
+};
+
+window.CoursesManager = CoursesManager;
