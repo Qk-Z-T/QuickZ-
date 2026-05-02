@@ -2,7 +2,8 @@
 // Course listing, filtering, joining logic – description expand/collapse,
 // persistent search & filter state, class badge on cards,
 // ONLY SHOW COURSES THAT HAVE A CLASS LEVEL,
-// Unread notice counts displayed on each course card
+// Unread notice counts displayed on each course card,
+// NEW: Quick join by permission key
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, refreshExamCache } from '../../core/state.js';
@@ -50,6 +51,7 @@ export const CoursesManager = {
     const currentSearchTerm = (document.getElementById('course-search-input')?.value || '').trim();
     const currentFilterClass = document.getElementById('course-filter-class')?.value || 'all';
     const currentStreamFilter = document.getElementById('course-filter-stream')?.value || 'all';
+    const currentPermissionKey = (document.getElementById('quick-join-key')?.value || '').trim();
 
     const searchTerm = currentSearchTerm.toLowerCase();
 
@@ -93,7 +95,6 @@ export const CoursesManager = {
 
     const unreadCounts = AppState.unreadNoticeCounts || {};
 
-    // Build course cards
     const courseCards = filtered.length > 0 ? filtered.map(group => {
       const isJoined = joinedGroupIds.includes(group.id);
       const joinMethodText = {
@@ -151,6 +152,7 @@ export const CoursesManager = {
         <h2 class="text-2xl font-bold mb-2 text-center dark:text-white">কোর্সসমূহ</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">আপনার পছন্দের কোর্স খুঁজুন ও জয়েন করুন</p>
 
+        <!-- Filters & Quick Join -->
         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 mb-6">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
@@ -170,13 +172,24 @@ export const CoursesManager = {
                 ${streamOptions}
               </select>
             </div>
-            <div class="flex items-end">
-              <button onclick="CoursesManager.applyFilter()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-bold transition">
-                ফিল্টার
+            <div class="flex items-end gap-2">
+              <div class="flex-1">
+                <label class="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-400">পারমিশন কী</label>
+                <input type="text" id="quick-join-key" class="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white" placeholder="পারমিশন কী">
+              </div>
+              <button onclick="CoursesManager.quickJoinByPermissionKey()" class="h-10 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition">
+                জয়েন
               </button>
             </div>
           </div>
-          ${studentClass ? `<p class="text-xs text-indigo-600 dark:text-indigo-400 mt-3"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '(' + studentStream + ')' : ''}</p>` : ''}
+          <div class="mt-3 flex items-center justify-between">
+            <div>
+              ${studentClass ? `<p class="text-xs text-indigo-600 dark:text-indigo-400"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '(' + studentStream + ')' : ''}</p>` : ''}
+            </div>
+            <button onclick="CoursesManager.applyFilter()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition">
+              ফিল্টার
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="course-list-container">
@@ -184,7 +197,7 @@ export const CoursesManager = {
         </div>
       </div>`;
 
-    // Restore search term value
+    // Restore values
     const searchInput = document.getElementById('course-search-input');
     if (searchInput) {
       searchInput.value = currentSearchTerm;
@@ -193,7 +206,6 @@ export const CoursesManager = {
       });
     }
 
-    // Restore class filter selection
     const classSelect = document.getElementById('course-filter-class');
     const streamContainer = document.getElementById('stream-filter-container');
     if (classSelect) {
@@ -203,15 +215,90 @@ export const CoursesManager = {
       });
     }
 
-    // Restore stream filter selection
     const streamSelect = document.getElementById('course-filter-stream');
-    if (streamSelect) {
-      streamSelect.value = currentStreamFilter;
+    if (streamSelect) streamSelect.value = currentStreamFilter;
+
+    // Restore permission key input value
+    const permInput = document.getElementById('quick-join-key');
+    if (permInput) {
+      permInput.value = currentPermissionKey;
+      permInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') CoursesManager.quickJoinByPermissionKey();
+      });
     }
   },
 
   applyFilter() {
     this.renderCourseList();
+  },
+
+  // NEW: Quick join using a permission key
+  async quickJoinByPermissionKey() {
+    const keyInput = document.getElementById('quick-join-key');
+    const key = keyInput ? keyInput.value.trim() : '';
+    if (!key) {
+      Swal.fire('ত্রুটি', 'পারমিশন কী আবশ্যক', 'error');
+      return;
+    }
+
+    if (!navigator.onLine) {
+      Swal.fire('অফলাইন', 'ইন্টারনেট সংযোগ ছাড়া জয়েন করা যাবে না', 'warning');
+      return;
+    }
+
+    try {
+      // Find group by permission key, not used, and joinMethod = permission
+      const groupsSnap = await getDocs(query(
+        collection(db, "groups"),
+        where("joinMethod", "==", "permission"),
+        where("permissionKey", "==", key),
+        where("permissionKeyUsed", "==", false)
+      ));
+
+      if (groupsSnap.empty) {
+        Swal.fire('ত্রুটি', 'কোনো মিল পাওয়া যায়নি অথবা কী ব্যবহৃত হয়েছে', 'error');
+        return;
+      }
+
+      // There should be only one unique permission key, but take the first
+      const groupDoc = groupsSnap.docs[0];
+      const group = { id: groupDoc.id, ...groupDoc.data() };
+
+      // Show modal
+      Swal.fire({
+        title: `<span class="text-lg font-bold">"${group.name}" কোর্সে যুক্ত করা হচ্ছে</span>`,
+        html: `<p class="text-sm text-gray-500">অপেক্ষা করুন...</p>`,
+        icon: 'info',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Mark permission key as used
+      await updateDoc(doc(db, "groups", group.id), {
+        permissionKeyUsed: true,
+        permissionKeyUsedBy: auth.currentUser.uid,
+        permissionKeyUsedAt: new Date()
+      });
+
+      // Add student to group (directly or approval)
+      await this.addToGroupDirectly(group.id);
+
+      Swal.fire({
+        title: 'স্বাগতম!',
+        html: `<p class="text-sm">আপনি <strong>"${group.name}"</strong> কোর্সে সফলভাবে যুক্ত হয়েছেন।</p>`,
+        icon: 'success',
+        confirmButtonText: 'চলুন'
+      }).then(() => {
+        // Navigate to dashboard
+        Router.student('dashboard');
+      });
+    } catch (error) {
+      console.error(error);
+      Swal.fire('ত্রুটি', 'কোর্সে যুক্ত হতে ব্যর্থ: ' + error.message, 'error');
+    }
   },
 
   async joinCourse(groupId, joinMethod, groupCode) {
@@ -283,7 +370,7 @@ export const CoursesManager = {
     if (!user) return;
 
     if ((AppState.joinedGroups || []).find(g => g.groupId === groupId)) {
-      Swal.fire('তথ্য', 'আপনি ইতিমধ্যে এই কোর্সে জয়েন করেছেন', 'info');
+      // Already joined, still show success
       return;
     }
 
@@ -301,7 +388,12 @@ export const CoursesManager = {
         status: 'pending',
         requestedAt: new Date()
       });
-      Swal.fire('অনুরোধ পাঠানো হয়েছে', 'শিক্ষক অনুমোদন করলে আপনি কোর্সে যুক্ত হবেন।', 'success');
+      // Still show success for quick join? Yes, but inform approval pending.
+      Swal.fire({
+        title: 'অনুরোধ পাঠানো হয়েছে',
+        text: 'শিক্ষক অনুমোদন করলে আপনি কোর্সে যুক্ত হবেন।',
+        icon: 'info'
+      });
       return;
     }
 
@@ -319,11 +411,7 @@ export const CoursesManager = {
     AppState.activeGroupId = groupId;
     localStorage.setItem('activeGroupId', groupId);
     localStorage.setItem('userProfile', JSON.stringify(AppState.userProfile));
-
-    Swal.fire('সফল', `"${groupData.name}" কোর্সে জয়েন করেছেন`, 'success').then(() => {
-      refreshExamCache();
-      Router.student('dashboard');
-    });
+    refreshExamCache();
   }
 };
 
