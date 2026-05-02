@@ -1,5 +1,5 @@
 /* src/student/styles.css */
-/* Student‑specific styles – updated with glass cards for results */
+/* Student‑specific styles */
 
 /* ---- Dashboard cards (old) ---- */
 .dashboard-card {
@@ -104,6 +104,7 @@
     width: 100%;
     height: 100%;
 }
+/* FIXED: icon circle now clearly visible */
 .glass-exam-card .dashboard-card-icon {
     width: 60px;
     height: 60px;
@@ -112,9 +113,10 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 15px;
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.25);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     color: inherit;
 }
 .glass-exam-card .dashboard-card-title {
@@ -334,30 +336,32 @@
     color: white;
 }
 
-/* ---- Glass card styles for results (NEW) ---- */
+/* ---- Glass card styles for results & ranking (UPDATED) ---- */
 .glass-card {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     color: #1e293b;
     transition: all 0.3s ease;
 }
 .dark .glass-card {
     background: rgba(0, 0, 0, 0.25);
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
     color: #f1f5f9;
 }
 
 /* Stat items inside glass cards */
 .glass-stat-item {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.35);
     border-radius: 10px;
     padding: 10px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    font-weight: 600;
 }
 .dark .glass-stat-item {
-    background: rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
 }
