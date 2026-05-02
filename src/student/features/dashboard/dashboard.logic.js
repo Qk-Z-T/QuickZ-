@@ -1,5 +1,6 @@
 // src/student/features/dashboard/dashboard.logic.js
-// Student dashboard, live & mock exam listing logic, rankings, notices (refined)
+// Student dashboard, live & mock exam listing logic, rankings, notices
+// OFFLINE SUPPORT: all key data is cached to IndexedDB + localStorage
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes, lastMockContext } from '../../core/state.js';
@@ -8,7 +9,7 @@ import { loadMathJax } from '../../../shared/utils/dom-helper.js';
 import { MathHelper } from '../../../shared/utils/math-helper.js';
 import { renderRankRow } from '../../components/result-row.js';
 import {
-  doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc, arrayUnion
+  doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 let pastSubjectFilter = 'all';
@@ -18,6 +19,28 @@ function setPageContent(html) {
   const container = getContentContainer();
   if (container) container.innerHTML = html;
   return container;
+}
+
+// Helper: save/load data from IndexedDB (falls back to localStorage)
+async function cacheData(key, data) {
+  try {
+    await window.DB.saveData('offlineCache', { id: key, data, timestamp: Date.now() });
+  } catch (e) {
+    // fallback to localStorage
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (_) {}
+  }
+}
+async function getCachedData(key) {
+  try {
+    const stored = await window.DB.getData('offlineCache', key);
+    if (stored && stored.data) return stored.data;
+  } catch (e) { }
+  // fallback to localStorage
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch (_) { }
+  return null;
 }
 
 export const StudentDashboard = {
@@ -415,70 +438,98 @@ export const StudentDashboard = {
       </div>`;
   },
 
+  // ---- Past Live Exams (offline cache) ----
   async loadPastLiveExams() {
     if (AppState.userDisabled || !AppState.activeGroupId) return;
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    try {
-      const uid = auth.currentUser.uid;
-      const now = new Date();
+    const cacheKey = 'pastLiveExams_' + AppState.activeGroupId;
 
-      const snaps = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
-      const liveExams = [];
-      snaps.forEach(doc => {
-        const e = { id: doc.id, ...doc.data() };
-        if (e.resultPublished || (e.endTime && new Date(e.endTime) < now)) liveExams.push(e);
-      });
+    if (navigator.onLine) {
+      try {
+        const uid = auth.currentUser.uid;
+        const now = new Date();
 
-      if (liveExams.length === 0) {
-        contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">পূর্বের লাইভ পরীক্ষা</h2><p class="text-gray-500">কোনো পরীক্ষা নেই</p></div>`;
+        const snaps = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live")));
+        const liveExams = [];
+        snaps.forEach(doc => {
+          const e = { id: doc.id, ...doc.data() };
+          if (e.resultPublished || (e.endTime && new Date(e.endTime) < now)) liveExams.push(e);
+        });
+
+        // Get user attempts for status
+        const userAttemptsSnap = await getDocs(query(collection(db, "attempts"), where("userId", "==", uid), where("isPractice", "==", false)));
+        const userAttempts = {};
+        userAttemptsSnap.forEach(d => { userAttempts[d.data().examId] = d.data(); });
+
+        // Attach user attempt info to each exam for offline display
+        const pastData = liveExams.map(e => ({
+          ...e,
+          userAttempt: userAttempts[e.id] || null
+        }));
+
+        await cacheData(cacheKey, pastData);
+        this._renderPastLiveExams(contentEl, pastData);
         return;
+      } catch (e) {
+        console.error(e);
       }
-
-      const userAttemptsSnap = await getDocs(query(collection(db, "attempts"), where("userId", "==", uid), where("isPractice", "==", false)));
-      const userAttempts = {};
-      userAttemptsSnap.forEach(d => { userAttempts[d.data().examId] = d.data(); });
-
-      const attended = [], absent = [];
-      liveExams.forEach(e => { if (userAttempts[e.id]) attended.push(e); else absent.push(e); });
-
-      const subjects = new Set();
-      liveExams.forEach(e => subjects.add(e.subject || 'Uncategorized'));
-
-      const filterBtns = ['all', ...Array.from(subjects).sort()].map(s =>
-        `<button class="px-3 py-1 rounded-full text-xs font-bold ${pastSubjectFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}" onclick="StudentDashboard.setPastFilter('${s}')">${s}</button>`
-      ).join('');
-
-      const renderCard = (exam, isAttended) => `
-        <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border mb-2">
-          <div class="flex justify-between items-start mb-1">
-            <span class="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">শেষ</span>
-            ${isAttended ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">অংশগ্রহণ করেছেন</span>' : '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">অনুপস্থিত</span>'}
-          </div>
-          <h3 class="font-bold">${exam.title}</h3>
-          <p class="text-xs text-indigo-500">${exam.subject || 'Uncategorized'} ${exam.chapter ? '• ' + exam.chapter : ''}</p>
-          <div class="flex gap-2 mt-2">
-            <button onclick="Exam.start('${exam.id}', true)" class="flex-1 bg-blue-600 text-white py-1.5 rounded text-xs font-bold">পরীক্ষা দিন</button>
-            <button onclick="StudentDashboard.viewExamSolutions('${exam.id}', 'live')" class="flex-1 bg-emerald-500 text-white py-1.5 rounded text-xs font-bold">সমাধান</button>
-          </div>
-        </div>`;
-
-      let all = [...attended, ...absent];
-      if (pastSubjectFilter !== 'all') all = all.filter(e => (e.subject || 'Uncategorized') === pastSubjectFilter);
-      all.sort((a, b) => new Date(b.endTime || b.createdAt) - new Date(a.endTime || a.createdAt));
-
-      contentEl.innerHTML = `
-        <div class="p-5 pb-20">
-          <button onclick="StudentDashboard.loadLiveExams()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ফিরুন</button>
-          <h2 class="text-xl font-bold mb-4 text-center">পূর্বের লাইভ পরীক্ষা</h2>
-          <div class="flex gap-2 mb-4 overflow-x-auto">${filterBtns}</div>
-          ${all.map(e => renderCard(e, attended.includes(e))).join('') || '<div class="text-center py-20 text-gray-400">কোনো পরীক্ষা নেই</div>'}
-        </div>`;
-    } catch(e) {
-      console.error(e);
-      Swal.fire('ত্রুটি', 'পূর্বের লাইভ পরীক্ষা লোড করতে ব্যর্থ', 'error');
     }
+
+    // Offline
+    const cached = await getCachedData(cacheKey);
+    if (cached) {
+      this._renderPastLiveExams(contentEl, cached);
+    } else {
+      contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">পূর্বের লাইভ পরীক্ষা</h2><p class="text-gray-500">কোনো পরীক্ষা নেই</p></div>`;
+    }
+  },
+
+  _renderPastLiveExams(contentEl, pastData) {
+    if (pastData.length === 0) {
+      contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">পূর্বের লাইভ পরীক্ষা</h2><p class="text-gray-500">কোনো পরীক্ষা নেই</p></div>`;
+      return;
+    }
+
+    const attended = [], absent = [];
+    pastData.forEach(e => {
+      if (e.userAttempt) attended.push(e);
+      else absent.push(e);
+    });
+
+    const subjects = new Set();
+    pastData.forEach(e => subjects.add(e.subject || 'Uncategorized'));
+
+    const filterBtns = ['all', ...Array.from(subjects).sort()].map(s =>
+      `<button class="px-3 py-1 rounded-full text-xs font-bold ${pastSubjectFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}" onclick="StudentDashboard.setPastFilter('${s}')">${s}</button>`
+    ).join('');
+
+    const renderCard = (exam, isAttended) => `
+      <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border mb-2">
+        <div class="flex justify-between items-start mb-1">
+          <span class="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">শেষ</span>
+          ${isAttended ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">অংশগ্রহণ করেছেন</span>' : '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">অনুপস্থিত</span>'}
+        </div>
+        <h3 class="font-bold">${exam.title}</h3>
+        <p class="text-xs text-indigo-500">${exam.subject || 'Uncategorized'} ${exam.chapter ? '• ' + exam.chapter : ''}</p>
+        <div class="flex gap-2 mt-2">
+          <button onclick="Exam.start('${exam.id}', true)" class="flex-1 bg-blue-600 text-white py-1.5 rounded text-xs font-bold">পরীক্ষা দিন</button>
+          <button onclick="StudentDashboard.viewExamSolutions('${exam.id}', 'live')" class="flex-1 bg-emerald-500 text-white py-1.5 rounded text-xs font-bold">সমাধান</button>
+        </div>
+      </div>`;
+
+    let all = [...attended, ...absent];
+    if (pastSubjectFilter !== 'all') all = all.filter(e => (e.subject || 'Uncategorized') === pastSubjectFilter);
+    all.sort((a, b) => new Date(b.endTime || b.createdAt) - new Date(a.endTime || a.createdAt));
+
+    contentEl.innerHTML = `
+      <div class="p-5 pb-20">
+        <button onclick="StudentDashboard.loadLiveExams()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ফিরুন</button>
+        <h2 class="text-xl font-bold mb-4 text-center">পূর্বের লাইভ পরীক্ষা</h2>
+        <div class="flex gap-2 mb-4 overflow-x-auto">${filterBtns}</div>
+        ${all.map(e => renderCard(e, attended.includes(e))).join('') || '<div class="text-center py-20 text-gray-400">কোনো পরীক্ষা নেই</div>'}
+      </div>`;
   },
 
   setPastFilter(subject) {
@@ -521,42 +572,57 @@ export const StudentDashboard = {
     loadMathJax(null, contentEl);
   },
 
-  // ---- Mock Hub & Structure Navigation ----
+  // ---- Mock Hub & Structure Navigation (offline cache) ----
   async loadMockHub() {
     if (!AppState.activeGroupId) return;
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    if (!navigator.onLine) {
-      const cached = localStorage.getItem('mockFolderCache_' + AppState.activeGroupId);
-      if (cached) {
-        try {
-          const structure = JSON.parse(cached);
-          const subjects = structure.mock || [];
-          contentEl.innerHTML = `<div class="p-5 pb-20">
-            <button onclick="StudentDashboard.loadDashboard()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ড্যাশবোর্ড</button>
-            <h2 class="text-xl font-bold mb-4 text-center">বিষয় নির্বাচন করুন</h2>
-            ${subjects.map(sub => `<div onclick="StudentDashboard.loadMockChapters('${sub.id}', '${sub.teacherId}')" class="p-4 rounded-xl border mb-3 cursor-pointer flex justify-between"><span>${sub.name}</span><i class="fas fa-chevron-right"></i></div>`).join('')}
-          </div>`;
-        } catch(e) { contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">অফলাইন ক্যাশে সমস্যা</div>'; }
-      } else { contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">অফলাইনে মক পরীক্ষার তালিকা পাওয়া যায়নি</div>'; }
-      return;
+    const cacheKey = 'mockFolderCache_' + AppState.activeGroupId;
+
+    // Try online first
+    if (navigator.onLine) {
+      try {
+        const groupDoc = await getDoc(doc(db, "groups", AppState.activeGroupId));
+        if (!groupDoc.exists()) {
+          contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">কোনো কোর্স পাওয়া যায়নি</div>';
+          return;
+        }
+        const teacherId = groupDoc.data().teacherId;
+        if (!teacherId) {
+          contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">শিক্ষকের তথ্য পাওয়া যায়নি</div>';
+          return;
+        }
+        const folderSnap = await getDoc(doc(db, "folderStructures", `${teacherId}_${AppState.activeGroupId}`));
+        if (!folderSnap.exists()) {
+          contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">কোনো মক পরীক্ষা নেই</div>';
+          return;
+        }
+        const structure = folderSnap.data();
+        // Cache online result
+        await cacheData(cacheKey, structure);
+        localStorage.setItem(cacheKey, JSON.stringify(structure)); // keep legacy
+        const subjects = structure.mock || [];
+        contentEl.innerHTML = this._renderMockHub(subjects, teacherId);
+        return;
+      } catch (e) {
+        console.error('Mock hub online error:', e);
+        // fallback to offline
+      }
     }
 
-    let groupDoc;
-    try { groupDoc = await getDoc(doc(db, "groups", AppState.activeGroupId)); } catch (e) { contentEl.innerHTML = '<div class="p-10 text-center text-red-500">কোর্স তথ্য লোড করতে ত্রুটি</div>'; return; }
-    if (!groupDoc.exists()) { contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">কোনো কোর্স পাওয়া যায়নি</div>'; return; }
+    // Offline: load from cache
+    const structure = await getCachedData(cacheKey);
+    if (structure) {
+      const subjects = structure.mock || [];
+      contentEl.innerHTML = this._renderMockHub(subjects, structure.teacherId || '');
+      return;
+    }
+    contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">অফলাইনে মক পরীক্ষার তালিকা পাওয়া যায়নি</div>';
+  },
 
-    const teacherId = groupDoc.data().teacherId;
-    if (!teacherId) { contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">শিক্ষকের তথ্য পাওয়া যায়নি</div>'; return; }
-
-    const folderSnap = await getDoc(doc(db, "folderStructures", `${teacherId}_${AppState.activeGroupId}`));
-    if (!folderSnap.exists()) { contentEl.innerHTML = '<div class="p-10 text-center text-gray-400">কোনো মক পরীক্ষা নেই</div>'; return; }
-
-    const structure = folderSnap.data();
-    localStorage.setItem('mockFolderCache_' + AppState.activeGroupId, JSON.stringify(structure));
-    const subjects = structure.mock || [];
-    contentEl.innerHTML = `
+  _renderMockHub(subjects, teacherId) {
+    return `
       <div class="p-5 pb-20">
         <button onclick="StudentDashboard.loadDashboard()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ড্যাশবোর্ড</button>
         <h2 class="text-xl font-bold mb-4 text-center">বিষয় নির্বাচন করুন</h2>
@@ -616,7 +682,7 @@ export const StudentDashboard = {
       </div>`;
   },
 
-  // ---- Rankings (two‑step: list → detail) ----
+  // ---- Rankings (offline cache) ----
   async loadRankings() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -625,102 +691,115 @@ export const StudentDashboard = {
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    try {
-      const snap = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live"), where("resultPublished", "==", true)));
-      const exams = [];
-      snap.forEach(d => exams.push({ id: d.id, ...d.data() }));
+    const cacheKey = 'rankingsList_' + AppState.activeGroupId;
 
-      if (exams.length === 0) {
-        contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2><p class="text-gray-500">এখনো কোনো র‍্যাংক প্রকাশিত হয়নি</p></div>`;
+    if (navigator.onLine) {
+      try {
+        const snap = await getDocs(query(collection(db, "exams"), where("groupId", "==", AppState.activeGroupId), where("type", "==", "live"), where("resultPublished", "==", true)));
+        const exams = [];
+        snap.forEach(d => exams.push({ id: d.id, ...d.data() }));
+        await cacheData(cacheKey, exams);
+        this._renderRankingsList(contentEl, exams);
         return;
-      }
+      } catch (e) { console.error(e); }
+    }
 
-      let html = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2><p class="text-sm text-gray-500 mb-4">একটি পরীক্ষা বেছে নিন</p>`;
-      exams.forEach(exam => {
-        const date = exam.createdAt?.toDate ? moment(exam.createdAt.toDate()).format('DD MMM, YYYY') : '';
-        html += `<div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border mb-3 flex justify-between items-center"><div><div class="font-bold">${exam.title}</div><div class="text-xs text-gray-500">${date}</div></div><button onclick="StudentDashboard.viewExamRanking('${exam.id}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">View Rank</button></div>`;
-      });
-      html += `</div>`;
-      contentEl.innerHTML = html;
-    } catch (e) { console.error(e); contentEl.innerHTML = '<div class="p-5 text-red-500">র‍্যাংকিং লোড করতে ত্রুটি</div>'; }
+    // Offline
+    const cached = await getCachedData(cacheKey);
+    this._renderRankingsList(contentEl, cached || []);
+  },
+
+  _renderRankingsList(contentEl, exams) {
+    if (exams.length === 0) {
+      contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2><p class="text-gray-500">এখনো কোনো র‍্যাংক প্রকাশিত হয়নি</p></div>`;
+      return;
+    }
+    let html = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2><p class="text-sm text-gray-500 mb-4">একটি পরীক্ষা বেছে নিন</p>`;
+    exams.forEach(exam => {
+      const date = exam.createdAt?.toDate ? moment(exam.createdAt.toDate()).format('DD MMM, YYYY') : '';
+      html += `<div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border mb-3 flex justify-between items-center"><div><div class="font-bold">${exam.title}</div><div class="text-xs text-gray-500">${date}</div></div><button onclick="StudentDashboard.viewExamRanking('${exam.id}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">View Rank</button></div>`;
+    });
+    html += `</div>`;
+    contentEl.innerHTML = html;
   },
 
   async viewExamRanking(examId) {
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    try {
-      const uid = auth.currentUser.uid;
+    const cacheKey = 'rankingDetail_' + examId;
 
-      const examSnap = await getDoc(doc(db, "exams", examId));
-      if (!examSnap.exists()) { Swal.fire('Error', 'Exam not found', 'error'); return this.loadRankings(); }
-      const exam = examSnap.data();
-      const totalMarks = exam.totalMarks || 0;
-      const duration = exam.duration || 0;
-      const examDate = exam.startTime ? moment(exam.startTime).format('DD MMM, YYYY') : moment(exam.createdAt?.toDate()).format('DD MMM, YYYY');
-      const examTime = exam.startTime ? moment(exam.startTime).format('hh:mm A') : 'N/A';
+    if (navigator.onLine) {
+      try {
+        const uid = auth.currentUser.uid;
+        const examSnap = await getDoc(doc(db, "exams", examId));
+        if (!examSnap.exists()) { Swal.fire('Error', 'Exam not found', 'error'); return this.loadRankings(); }
+        const exam = examSnap.data();
+        const attemptsSnap = await getDocs(query(collection(db, "attempts"), where("examId", "==", examId), where("isPractice", "==", false)));
 
-      const attemptsSnap = await getDocs(query(collection(db, "attempts"), where("examId", "==", examId), where("isPractice", "==", false)));
+        const userFirstAttempt = {};
+        attemptsSnap.forEach(doc => {
+          const att = { id: doc.id, ...doc.data() };
+          if (!att.submittedAt || att.score === undefined || att.score === null) return;
+          const existing = userFirstAttempt[att.userId];
+          if (!existing || att.submittedAt.toDate() < existing.submittedAt.toDate()) { userFirstAttempt[att.userId] = att; }
+        });
+        const rankedList = Object.values(userFirstAttempt).map(att => ({ ...att, score: parseFloat(att.score) || 0 }));
+        rankedList.sort((a, b) => b.score - a.score);
 
-      const userFirstAttempt = {};
-      attemptsSnap.forEach(doc => {
-        const att = { id: doc.id, ...doc.data() };
-        if (!att.submittedAt || att.score === undefined || att.score === null) return;
-        const existing = userFirstAttempt[att.userId];
-        if (!existing || att.submittedAt.toDate() < existing.submittedAt.toDate()) { userFirstAttempt[att.userId] = att; }
-      });
+        const detail = { exam, rankedList };
+        await cacheData(cacheKey, detail);
+        this._renderRankingDetail(contentEl, detail);
+        return;
+      } catch (e) { console.error(e); }
+    }
 
-      const rankedList = Object.values(userFirstAttempt).map(att => ({
-        ...att, score: parseFloat(att.score) || 0, accuracy: 0,
-        timeTakenSeconds: att.startedAt && att.submittedAt ? Math.floor((att.submittedAt.toDate() - att.startedAt.toDate()) / 1000) : 0
-      }));
-      rankedList.sort((a, b) => b.score - a.score);
-
-      let myRank = null;
-      rankedList.forEach((att, index) => { if (att.userId === uid) myRank = index + 1; });
-
-      const summaryHtml = `
-        <div class="glass-card p-5 rounded-2xl mb-6">
-          <h3 class="text-xl font-bold mb-2 dark:text-white">${exam.title}</h3>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div class="glass-stat-item">
-              <span class="text-gray-500 dark:text-gray-400 block text-xs"><i class="fas fa-star text-amber-400 mr-1"></i>মোট মার্ক</span>
-              <span class="font-bold dark:text-white text-lg">${totalMarks}</span>
-            </div>
-            <div class="glass-stat-item">
-              <span class="text-gray-500 dark:text-gray-400 block text-xs"><i class="far fa-clock mr-1"></i>সময়</span>
-              <span class="font-bold dark:text-white text-lg">${duration} মিনিট</span>
-            </div>
-            <div class="glass-stat-item">
-              <span class="text-gray-500 dark:text-gray-400 block text-xs"><i class="far fa-calendar-alt mr-1"></i>তারিখ</span>
-              <span class="font-bold dark:text-white">${examDate}</span>
-            </div>
-            <div class="glass-stat-item">
-              <span class="text-gray-500 dark:text-gray-400 block text-xs"><i class="far fa-clock mr-1"></i>পরীক্ষার সময়</span>
-              <span class="font-bold dark:text-white">${examTime}</span>
-            </div>
-            <div class="col-span-2 mt-2">
-              <div class="glass-stat-item">
-                <span class="text-gray-500 dark:text-gray-400 block text-xs"><i class="fas fa-trophy mr-1"></i>আপনার র‍্যাংক</span>
-                <span class="font-bold text-indigo-600 dark:text-indigo-400 text-lg">${myRank ? myRank + ' / ' + rankedList.length : 'অংশগ্রহণ করেননি'}</span>
-              </div>
-            </div>
-          </div>
-        </div>`;
-
-      let rankHTML = '';
-      rankedList.forEach((att, i) => { const studentInfo = { college: '', school: '' }; rankHTML += renderRankRow(att, i, studentInfo, uid); });
-
-      contentEl.innerHTML = `
-        <div class="p-5 pb-20">
-          <button onclick="StudentDashboard.loadRankings()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> র‍্যাংকিং তালিকা</button>
-          ${summaryHtml}
-          <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">${rankHTML || '<div class="p-5 text-center text-gray-500">কোনো র‍্যাংক নেই</div>'}</div>
-        </div>`;
-    } catch (e) { console.error(e); contentEl.innerHTML = '<div class="p-5 text-red-500">র‍্যাংকিং লোড করতে ত্রুটি</div>'; }
+    // Offline
+    const cached = await getCachedData(cacheKey);
+    if (cached) {
+      this._renderRankingDetail(contentEl, cached);
+    } else {
+      contentEl.innerHTML = '<div class="p-5 text-red-500">অফলাইনে র‍্যাংকিং বিস্তারিত পাওয়া যায়নি</div>';
+    }
   },
 
-  // ---- Refined Notices & Polls ----
+  _renderRankingDetail(contentEl, detail) {
+    const { exam, rankedList } = detail;
+    const uid = auth.currentUser.uid;
+    const totalMarks = exam.totalMarks || 0;
+    const duration = exam.duration || 0;
+    const examDate = exam.startTime ? moment(exam.startTime).format('DD MMM, YYYY') : '';
+    const examTime = exam.startTime ? moment(exam.startTime).format('hh:mm A') : '';
+    let myRank = null;
+    rankedList.forEach((att, index) => { if (att.userId === uid) myRank = index + 1; });
+
+    const summaryHtml = `
+      <div class="glass-card p-5 rounded-2xl mb-6">
+        <h3 class="text-xl font-bold mb-2 dark:text-white">${exam.title}</h3>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="glass-stat-item"><span class="text-xs">মোট মার্ক</span><span class="font-bold text-lg">${totalMarks}</span></div>
+          <div class="glass-stat-item"><span class="text-xs">সময়</span><span class="font-bold text-lg">${duration} মিনিট</span></div>
+          <div class="glass-stat-item"><span class="text-xs">তারিখ</span><span class="font-bold">${examDate}</span></div>
+          <div class="glass-stat-item"><span class="text-xs">পরীক্ষার সময়</span><span class="font-bold">${examTime}</span></div>
+          <div class="col-span-2"><div class="glass-stat-item"><span class="text-xs">আপনার র‍্যাংক</span><span class="font-bold text-indigo-600 text-lg">${myRank ? myRank + ' / ' + rankedList.length : 'অংশগ্রহণ করেননি'}</span></div></div>
+        </div>
+      </div>`;
+
+    let rankHTML = '';
+    rankedList.forEach((att, i) => {
+      const studentInfo = { college: '', school: '' };
+      rankHTML += renderRankRow(att, i, studentInfo, uid);
+    });
+
+    contentEl.innerHTML = `
+      <div class="p-5 pb-20">
+        <button onclick="StudentDashboard.loadRankings()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> র‍্যাংকিং তালিকা</button>
+        ${summaryHtml}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow">${rankHTML || '<div class="p-5 text-center text-gray-500">কোনো র‍্যাংক নেই</div>'}</div>
+      </div>`;
+  },
+
+  // ---- Notices (offline cache) ----
   async loadNotices() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -729,116 +808,124 @@ export const StudentDashboard = {
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
 
-    try {
-      const uid = auth.currentUser.uid;
-      // Real-time listener already set in initNotificationListener; here we fetch for display
-      const snap = await getDocs(query(
-        collection(db, "notices"),
-        where("groupId", "==", AppState.activeGroupId),
-        orderBy("createdAt", "desc")
-      ));
-      const notices = [];
-      snap.forEach(d => notices.push({ id: d.id, ...d.data() }));
+    const cacheKey = 'notices_' + AppState.activeGroupId;
 
-      // Mark as viewed (update views for this user) while rendering
-      for (const n of notices) {
-        const noticeRef = doc(db, "notices", n.id);
-        const currentViews = n.views || {};
-        if (!currentViews[uid]) {
-          currentViews[uid] = new Date();
-          await updateDoc(noticeRef, { views: currentViews }).catch(() => {});
+    if (navigator.onLine) {
+      try {
+        const uid = auth.currentUser.uid;
+        const snap = await getDocs(query(
+          collection(db, "notices"),
+          where("groupId", "==", AppState.activeGroupId),
+          orderBy("createdAt", "desc")
+        ));
+        const notices = [];
+        snap.forEach(d => notices.push({ id: d.id, ...d.data() }));
+
+        // Mark as viewed
+        for (const n of notices) {
+          const noticeRef = doc(db, "notices", n.id);
+          const currentViews = n.views || {};
+          if (!currentViews[uid]) {
+            currentViews[uid] = new Date();
+            await updateDoc(noticeRef, { views: currentViews }).catch(() => {});
+          }
         }
+
+        await cacheData(cacheKey, notices);
+        this._renderNotices(contentEl, notices);
+        return;
+      } catch (e) { console.error(e); }
+    }
+
+    // Offline
+    const cached = await getCachedData(cacheKey);
+    this._renderNotices(contentEl, cached || []);
+  },
+
+  _renderNotices(contentEl, notices) {
+    const uid = auth.currentUser.uid;
+    let html = '';
+    notices.forEach(n => {
+      const isPoll = n.type === 'poll';
+      const viewCount = Object.keys(n.views || {}).length;
+      const votes = n.votes || {};
+      const totalVotes = Object.keys(votes).length;
+      const myVote = votes[uid]; // the option index the user voted for, if any
+
+      let pollSection = '';
+      if (isPoll && n.options && n.options.length > 0) {
+        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
+        const counts = {};
+        n.options.forEach((_, i) => { counts[i] = 0; });
+        Object.values(votes).forEach(optIdx => {
+          if (counts[optIdx] !== undefined) counts[optIdx]++;
+        });
+
+        const optionsHtml = n.options.map((opt, i) => {
+          const count = counts[i] || 0;
+          const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+          const isMyVote = myVote !== undefined && myVote == i;
+          const barColor = colors[i % colors.length];
+          return `
+            <div class="mb-2">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-sm font-medium dark:text-white">${opt}${isMyVote ? ' <span class="text-xs text-indigo-600 font-bold">(আপনার ভোট)</span>' : ''}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">${count} ভোট (${pct}%)</span>
+              </div>
+              <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500" style="width: ${pct}%; background: ${barColor};"></div>
+              </div>
+            </div>`;
+        }).join('');
+
+        const voteButton = myVote === undefined
+          ? `<div class="flex gap-2 mt-2">${n.options.map((opt, i) => `
+             <button onclick="StudentDashboard.castVote('${n.id}', ${i})" class="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold transition">${opt}</button>
+           `).join('')}</div>`
+          : `<div class="mt-2 text-xs text-green-600 font-bold">আপনি ভোট দিয়েছেন</div>`;
+
+        pollSection = `
+          <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">পোল ফলাফল (মোট ${totalVotes} ভোট)</div>
+            ${optionsHtml}
+            ${voteButton}
+          </div>`;
       }
 
-      let html = '';
-      notices.forEach(n => {
-        const isPoll = n.type === 'poll';
-        const viewCount = Object.keys(n.views || {}).length;
-        const votes = n.votes || {};
-        const totalVotes = Object.keys(votes).length;
-        const myVote = votes[uid]; // the option index the user voted for, if any
-
-        let pollSection = '';
-        if (isPoll && n.options && n.options.length > 0) {
-          // Build option bars
-          const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
-          const counts = {};
-          n.options.forEach((_, i) => { counts[i] = 0; });
-          Object.values(votes).forEach(optIdx => {
-            if (counts[optIdx] !== undefined) counts[optIdx]++;
-          });
-
-          const optionsHtml = n.options.map((opt, i) => {
-            const count = counts[i] || 0;
-            const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-            const isMyVote = myVote !== undefined && myVote == i;
-            const barColor = colors[i % colors.length];
-            return `
-              <div class="mb-2">
-                <div class="flex justify-between items-center mb-1">
-                  <span class="text-sm font-medium dark:text-white">${opt}${isMyVote ? ' <span class="text-xs text-indigo-600 font-bold">(আপনার ভোট)</span>' : ''}</span>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">${count} ভোট (${pct}%)</span>
-                </div>
-                <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-500" style="width: ${pct}%; background: ${barColor};"></div>
-                </div>
-              </div>`;
-          }).join('');
-
-          const voteButton = myVote === undefined
-            ? `<div class="mt-2 text-xs text-gray-400">ভোট দিতে অপশনে ক্লিক করুন</div>
-               <div class="flex gap-2 mt-2">${n.options.map((opt, i) => `
-                 <button onclick="StudentDashboard.castVote('${n.id}', ${i})" class="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold transition">${opt}</button>
-               `).join('')}</div>`
-            : `<div class="mt-2 text-xs text-green-600 font-bold">আপনি ভোট দিয়েছেন</div>`;
-
-          pollSection = `
-            <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-              <div class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">পোল ফলাফল (মোট ${totalVotes} ভোট)</div>
-              ${optionsHtml}
-              ${voteButton}
-            </div>`;
-        }
-
-        html += `
-          <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 mb-3 shadow-sm">
-            <div class="flex justify-between items-start">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPoll ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'}">
-                    ${isPoll ? '📊 পোল' : '📢 নোটিশ'}
-                  </span>
-                  <span class="text-xs text-gray-400 dark:text-gray-500">
-                    ${moment(n.createdAt?.toDate()).format('DD MMM, YYYY h:mm A')}
-                  </span>
-                </div>
-                <h3 class="font-bold text-base dark:text-white mt-1">${n.title}</h3>
-                ${!isPoll && n.content ? `<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">${n.content}</p>` : ''}
-                <div class="flex items-center gap-4 mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  <span><i class="far fa-eye mr-1"></i> ${viewCount} জন দেখেছেন</span>
-                </div>
+      html += `
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 mb-3 shadow-sm">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPoll ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'}">
+                  ${isPoll ? '📊 পোল' : '📢 নোটিশ'}
+                </span>
+                <span class="text-xs text-gray-400 dark:text-gray-500">
+                  ${moment(n.createdAt?.toDate()).format('DD MMM, YYYY h:mm A')}
+                </span>
+              </div>
+              <h3 class="font-bold text-base dark:text-white mt-1">${n.title}</h3>
+              ${!isPoll && n.content ? `<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">${n.content}</p>` : ''}
+              <div class="flex items-center gap-4 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                <span><i class="far fa-eye mr-1"></i> ${viewCount} জন দেখেছেন</span>
               </div>
             </div>
-            ${pollSection}
-          </div>`;
-      });
-
-      contentEl.innerHTML = `
-        <div class="p-5 pb-20">
-          <h2 class="text-xl font-bold mb-4 dark:text-white">নোটিশ ও পোল</h2>
-          ${html || '<p class="text-gray-500 dark:text-gray-400 text-center">কোনো নোটিশ নেই</p>'}
+          </div>
+          ${pollSection}
         </div>`;
-    } catch (e) {
-      console.error(e);
-      contentEl.innerHTML = '<div class="p-5 text-red-500">নোটিশ লোড করতে ত্রুটি</div>';
-    }
+    });
+
+    contentEl.innerHTML = `
+      <div class="p-5 pb-20">
+        <h2 class="text-xl font-bold mb-4 dark:text-white">নোটিশ ও পোল</h2>
+        ${html || '<p class="text-gray-500 dark:text-gray-400 text-center">কোনো নোটিশ নেই</p>'}
+      </div>`;
   },
 
   async castVote(noticeId, optionIndex) {
     const uid = auth.currentUser.uid;
     if (!uid) return;
     try {
-      // Use arrayUnion to add the vote; Firestore prevents duplicates if we check first
       const noticeRef = doc(db, "notices", noticeId);
       const noticeSnap = await getDoc(noticeRef);
       if (!noticeSnap.exists()) return;
