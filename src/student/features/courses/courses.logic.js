@@ -79,9 +79,11 @@ export const CoursesManager = {
     });
 
     const classLevels = ['6', '7', '8', 'SSC', 'HSC', 'Admission'];
-    const classOptions = classLevels.map(lvl =>
-      `<option value="${lvl}" ${lvl === currentFilterClass ? 'selected' : ''}>${lvl === 'Admission' ? 'এডমিশন' : (lvl === 'SSC' ? 'এসএসসি' : (lvl === 'HSC' ? 'এইচএসসি' : lvl+'ম শ্রেণী'))}</option>`
-    ).join('');
+    const classOptions = classLevels.map(lvl => {
+      const selected = lvl === currentFilterClass ? 'selected' : '';
+      const label = lvl === 'Admission' ? 'এডমিশন' : (lvl === 'SSC' ? 'এসএসসি' : (lvl === 'HSC' ? 'এইচএসসি' : lvl + 'ম শ্রেণী'));
+      return `<option value="${lvl}" ${selected}>${label}</option>`;
+    }).join('');
 
     const streamOptions = `
       <option value="all" ${currentStreamFilter === 'all' ? 'selected' : ''}>সব শাখা</option>
@@ -91,6 +93,7 @@ export const CoursesManager = {
 
     const unreadCounts = AppState.unreadNoticeCounts || {};
 
+    // Build course cards
     const courseCards = filtered.length > 0 ? filtered.map(group => {
       const isJoined = joinedGroupIds.includes(group.id);
       const joinMethodText = {
@@ -119,11 +122,7 @@ export const CoursesManager = {
       const descHtml = desc ? `
         <div class="mb-3">
           <p id="desc-${group.id}" class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">${desc}</p>
-          <button onclick="
-            const d = document.getElementById('desc-${group.id}');
-            const clamped = d.classList.toggle('line-clamp-1');
-            this.innerHTML = clamped ? 'আরও দেখুন <i class=\\'fas fa-chevron-down ml-1\\'></i>' : 'লুকান <i class=\\'fas fa-chevron-up ml-1\\'></i>';
-          " class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline mt-1 inline-flex items-center">
+          <button onclick="const d=document.getElementById('desc-${group.id}'); const clamped=d.classList.toggle('line-clamp-1'); this.innerHTML=clamped?'আরও দেখুন <i class=\\'fas fa-chevron-down ml-1\\'></i>':'লুকান <i class=\\'fas fa-chevron-up ml-1\\'></i>';" class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline mt-1 inline-flex items-center">
             আরও দেখুন <i class="fas fa-chevron-down ml-1"></i>
           </button>
         </div>` : '<div class="mb-3"></div>';
@@ -177,7 +176,7 @@ export const CoursesManager = {
               </button>
             </div>
           </div>
-          ${studentClass ? `<p class="text-xs text-indigo-600 dark:text-indigo-400 mt-3"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '('+studentStream+')' : ''}</p>` : ''}
+          ${studentClass ? `<p class="text-xs text-indigo-600 dark:text-indigo-400 mt-3"><i class="fas fa-graduation-cap"></i> আপনার ক্লাস: ${studentClass} ${studentStream ? '(' + studentStream + ')' : ''}</p>` : ''}
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="course-list-container">
