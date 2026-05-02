@@ -59,13 +59,13 @@
 </head>
 <body class="text-gray-800 bg-gray-50 dark:bg-gray-900 dark:text-gray-200">
 
-    <!-- Splash Screen -->
-    <div id="splash-screen" class="splash-screen bg-white dark:bg-gray-900">
+    <!-- Splash Screen (updated to match teacher panel design) -->
+    <div id="splash-screen" class="splash-screen" style="background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);">
         <div class="splash-logo">
-            <span class="text-gray-900 dark:text-white">Quick</span><span class="text-emerald-500">Z</span>
+            <span class="text-white">Quick</span><span class="text-emerald-500">Z</span>
         </div>
-        <div class="splash-subtitle">The ultimate exam platform</div>
-        <div class="splash-loader"></div>
+        <div class="splash-subtitle" style="color:#94a3b8;">The ultimate exam platform</div>
+        <div class="splash-loader" style="border-color: rgba(255,255,255,0.1); border-top-color: #10b981;"></div>
     </div>
 
     <!-- Auth Screen -->
@@ -197,7 +197,5 @@
 
     <!-- Main Application Script -->
     <script type="module" src="../src/student/app.js"></script>
-
-    <!-- The db.service.js is loaded automatically by app.js imports; no separate tag needed -->
 </body>
 </html>
