@@ -1,6 +1,7 @@
 // src/student/core/router.js
 // Student portal routing – boxed menu items, auto‑close mobile drawer,
-// NO teacher code required, missing course redirects to courses page
+// NO teacher code required, missing course redirects to courses page,
+// Refresh stays on current page, back button from home goes to root
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState, clearListeners, refreshExamCache } from './state.js';
@@ -170,13 +171,22 @@ export const Router = {
     document.getElementById('auth-screen')?.classList.add('hidden');
 
     refreshExamCache();
-    renderPage('dashboard', (contentEl) => {
-      contentEl.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`;
-      StudentDashboard.loadDashboard();
-    });
+
+    // Determine initial page from URL hash (if valid)
+    const hash = window.location.hash ? window.location.hash.substring(1) : '';
+    const validPages = ['dashboard', 'courses', 'rank', 'results', 'analysis', 'notices', 'management', 'profile'];
+    let initialPage = 'dashboard';
+    if (validPages.includes(hash)) {
+      initialPage = hash;
+    }
+
+    // Replace current history entry with this page so back navigation works properly
+    window.history.replaceState({ route: initialPage }, '', `#${initialPage}`);
+
+    // Load the initial page without adding another history entry
+    await Router._loadPage(initialPage, true);
 
     StudentDashboard.initNotificationListener();
-    window.history.pushState({ route: 'dashboard', internal: true }, '');
 
     setTimeout(async () => {
       if (navigator.onLine && AppState.activeGroupId) {
@@ -184,6 +194,56 @@ export const Router = {
         OfflineSync.syncPendingItems();
       }
     }, 2000);
+  },
+
+  // Internal page loader; isInitial = true uses replaceState, false uses pushState
+  _loadPage(page, isInitial = false) {
+    const updateHistory = (route) => {
+      if (isInitial) {
+        window.history.replaceState({ route }, '', `#${route}`);
+      } else {
+        window.history.pushState({ route }, '', `#${route}`);
+      }
+    };
+
+    switch (page) {
+      case 'profile':
+        renderPage('profile', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; ProfileManager.profile(); });
+        updateHistory('profile');
+        break;
+      case 'dashboard':
+        renderPage('dashboard', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; StudentDashboard.loadDashboard(); });
+        updateHistory('dashboard');
+        break;
+      case 'courses':
+        renderPage('courses', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; CoursesManager.loadCourses(); });
+        updateHistory('courses');
+        break;
+      case 'rank':
+        renderPage('rank', (el) => { el.innerHTML = renderRankSkeleton(); setTimeout(() => StudentDashboard.loadRankings(), 50); });
+        updateHistory('rank');
+        break;
+      case 'results':
+        renderPage('results', (el) => { el.innerHTML = renderResultsSkeleton(); setTimeout(() => ResultsManager.loadResults(), 50); });
+        updateHistory('results');
+        break;
+      case 'analysis':
+        renderPage('analysis', (el) => { el.innerHTML = renderAnalysisSkeleton(); setTimeout(() => AnalysisManager.loadAnalysis(), 50); });
+        updateHistory('analysis');
+        break;
+      case 'notices':
+        renderPage('notices', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; StudentDashboard.loadNotices(); });
+        updateHistory('notices');
+        break;
+      case 'management':
+        renderPage('management', (el) => { el.innerHTML = renderManagementSkeleton(); setTimeout(() => ManagementManager.load(), 50); });
+        updateHistory('management');
+        break;
+      default:
+        // fallback
+        renderPage('dashboard', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; StudentDashboard.loadDashboard(); });
+        updateHistory('dashboard');
+    }
   },
 
   showProfileForm: () => {
@@ -319,7 +379,7 @@ export const Router = {
       };
     });
 
-    window.history.pushState({ route: 'profile' }, '');
+    window.history.replaceState({ route: 'profile' }, '', '#profile');
   },
 
   student: async (p) => {
@@ -331,11 +391,10 @@ export const Router = {
       return;
     }
 
-    // No teacher code required; skip the check
+    // No teacher code required
 
     const exceptions = ['dashboard', 'profile', 'management', 'courses', 'notices'];
     if (!exceptions.includes(p) && !AppState.activeGroupId) {
-      // Instead of group code modal, navigate to courses
       Swal.fire({
         title: 'কোর্সে জয়েন নেই',
         text: 'এই ফিচারটি ব্যবহার করতে আগে একটি কোর্সে জয়েন করুন।',
@@ -356,24 +415,27 @@ export const Router = {
       return;
     }
 
-    const loadPage = {
-      profile: () => { renderPage('profile', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; ProfileManager.profile(); }); window.history.pushState({ route: 'profile' }, ''); },
-      dashboard: () => { renderPage('dashboard', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; StudentDashboard.loadDashboard(); }); window.history.pushState({ route: 'dashboard' }, ''); },
-      courses: () => { renderPage('courses', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; CoursesManager.loadCourses(); }); window.history.pushState({ route: 'courses' }, ''); },
-      rank: () => { renderPage('rank', (el) => { el.innerHTML = renderRankSkeleton(); setTimeout(() => StudentDashboard.loadRankings(), 50); }); window.history.pushState({ route: 'rank' }, ''); },
-      results: () => { renderPage('results', (el) => { el.innerHTML = renderResultsSkeleton(); setTimeout(() => ResultsManager.loadResults(), 50); }); window.history.pushState({ route: 'results' }, ''); },
-      analysis: () => { renderPage('analysis', (el) => { el.innerHTML = renderAnalysisSkeleton(); setTimeout(() => AnalysisManager.loadAnalysis(), 50); }); window.history.pushState({ route: 'analysis' }, ''); },
-      notices: () => { renderPage('notices', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; StudentDashboard.loadNotices(); }); window.history.pushState({ route: 'notices' }, ''); },
-      management: () => { renderPage('management', (el) => { el.innerHTML = renderManagementSkeleton(); setTimeout(() => ManagementManager.load(), 50); }); window.history.pushState({ route: 'management' }, ''); }
-    };
-
-    if (loadPage[p]) loadPage[p]();
+    // Load the page with normal history push (adds new entry)
+    Router._loadPage(p, false);
   }
 };
 
 window.Router = Router;
 
 window.addEventListener('popstate', (event) => {
-  if (event.state?.route) Router.student(event.state.route);
-  else Router.student('dashboard');
+  if (!event.state) {
+    // No history state – we are at the initial entry; go to landing page
+    window.location.href = '/';
+    return;
+  }
+  if (event.state.route) {
+    Router._loadPage(event.state.route, false);  // load page without pushing again? We want to reflect the popped state without adding duplicate.
+    // Actually, when the popstate happens, the URL already changed; we should just render the page.
+    // To avoid pushing another state, we can call _loadPage with isInitial = true? No, because that would replace the current state.
+    // Better: we'll just manually render without touching history.
+    // Simplest: call the page loading functions directly, without push.
+    Router._loadPage(event.state.route, true);  // replace the current state to match the popped URL
+  } else {
+    Router._loadPage('dashboard', true);
+  }
 });
