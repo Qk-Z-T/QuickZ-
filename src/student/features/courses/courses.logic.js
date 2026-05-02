@@ -1,7 +1,8 @@
 // src/student/features/courses/courses.logic.js
 // Course listing, filtering, joining logic – description expand/collapse,
 // persistent search & filter state, class badge on cards,
-// ONLY SHOW COURSES THAT HAVE A CLASS LEVEL
+// ONLY SHOW COURSES THAT HAVE A CLASS LEVEL,
+// Unread notice counts displayed on each course card
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, refreshExamCache } from '../../core/state.js';
@@ -46,18 +47,15 @@ export const CoursesManager = {
     const studentStream = AppState.admissionStream || '';
     const joinedGroupIds = (AppState.joinedGroups || []).map(g => g.groupId);
 
-    // Capture current filter/selections before re-render
     const currentSearchTerm = (document.getElementById('course-search-input')?.value || '').trim();
     const currentFilterClass = document.getElementById('course-filter-class')?.value || 'all';
     const currentStreamFilter = document.getElementById('course-filter-stream')?.value || 'all';
 
     const searchTerm = currentSearchTerm.toLowerCase();
 
-    // *** NEW: Only show courses that have a classLevel ***
+    // Only courses with a class level
     let filtered = allGroups.filter(g => {
-      // Must have a class level
       if (!g.classLevel) return false;
-
       if (currentFilterClass !== 'all') {
         if (g.classLevel !== currentFilterClass) return false;
         if (currentFilterClass === 'Admission') {
@@ -73,7 +71,7 @@ export const CoursesManager = {
       return true;
     });
 
-    // Sort: matching class first
+    // Sort matching class first
     filtered.sort((a, b) => {
       if (a.classLevel === studentClass && b.classLevel !== studentClass) return -1;
       if (a.classLevel !== studentClass && b.classLevel === studentClass) return 1;
@@ -91,6 +89,8 @@ export const CoursesManager = {
       <option value="Humanities" ${currentStreamFilter === 'Humanities' ? 'selected' : ''}>মানবিক</option>
       <option value="Commerce" ${currentStreamFilter === 'Commerce' ? 'selected' : ''}>কমার্স</option>`;
 
+    const unreadCounts = AppState.unreadNoticeCounts || {};
+
     const courseCards = filtered.length > 0 ? filtered.map(group => {
       const isJoined = joinedGroupIds.includes(group.id);
       const joinMethodText = {
@@ -104,9 +104,12 @@ export const CoursesManager = {
       const streamBadge = group.admissionStream ?
         `<span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 ml-1">${group.admissionStream}</span>` : '';
 
+      const unread = unreadCounts[group.id] || 0;
+      const unreadBadge = unread > 0 ? `<span class="absolute top-2 right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">${unread}</span>` : '';
+
       const imageHtml = group.imageUrl ?
-        `<img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-xl" alt="${group.name}">` :
-        `<div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-xl"><i class="fas fa-book-open"></i></div>`;
+        `<div class="relative"><img src="${group.imageUrl}" class="w-full h-36 object-cover rounded-t-xl" alt="${group.name}">${unreadBadge}</div>` :
+        `<div class="relative"><div class="w-full h-36 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center text-3xl text-indigo-400 rounded-t-xl"><i class="fas fa-book-open"></i></div>${unreadBadge}</div>`;
 
       const actionButton = isJoined
         ? `<button class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 py-2 rounded-lg text-sm font-bold" disabled><i class="fas fa-check-circle"></i> জয়েন করেছেন</button>`
