@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view – OFFLINE SUPPORT + FIX for missing exam cache
+// Student results listing, filtering, and detailed result view – FIX null user crash
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -50,6 +50,12 @@ export const ResultsManager = {
       return;
     }
 
+    // Guard against null auth
+    if (!auth.currentUser) {
+      Swal.fire('সেশন নেই', 'অনুগ্রহ করে আবার লগইন করুন', 'error').then(() => window.location.reload());
+      return;
+    }
+
     const contentEl = document.getElementById('page-content');
     if (!contentEl) return;
     contentEl.innerHTML = '<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>';
@@ -75,35 +81,28 @@ export const ResultsManager = {
         const resultsData = { live: [], mock: [] };
 
         for (const attempt of attempts) {
-          // Try to get exam from cache or Firestore, but never skip the attempt if exam missing
           let exam = ExamCache[attempt.examId];
           if (!exam) {
-            // If online, try fetching the exam quickly; if fails, still show result
             try {
               const examSnap = await getDoc(doc(db, "exams", attempt.examId));
               if (examSnap.exists()) {
                 exam = { id: examSnap.id, ...examSnap.data() };
-                // put it in cache for later
                 ExamCache[exam.id] = exam;
               }
             } catch (e) {}
           }
-
-          // If still no exam, create a minimal exam object so the result is displayed
           if (!exam) {
             exam = {
               id: attempt.examId,
               subject: 'Unknown',
               type: attempt.isPractice ? 'mock' : 'live',
               resultPublished: true,
-              groupId: AppState.activeGroupId, // assume same group (since we only query attempts of this student, it's likely)
+              groupId: AppState.activeGroupId,
               cancelled: false
             };
           }
 
-          // Skip if cancelled and not published (but we may not know if exam missing)
           if (exam.cancelled && !exam.resultPublished) continue;
-          // Skip if live exam and result not published, unless it's a practice attempt
           if (exam.type === 'live' && !exam.resultPublished && !attempt.isPractice) continue;
 
           const subject = exam.subject || 'Uncategorized';
@@ -117,7 +116,6 @@ export const ResultsManager = {
           }
         }
 
-        // Cache the structured data
         await cacheData(cacheKey, { resultsData, subjectList: Array.from(subjectsSet).sort() });
         this._renderResultsList(contentEl, resultsData, Array.from(subjectsSet).sort());
         return;
