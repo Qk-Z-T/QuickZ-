@@ -1,6 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// Exam taking logic: start, submit, timer, auto-save, mark answers
-// (Option buttons now styled as distinct boxes with green check on selection)
+// Exam taking logic – fixed review panel jump & green check on selection
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -65,7 +64,6 @@ export const Exam = {
         return;
       }
 
-      // Handle attempts (live only)
       if (isLive) {
         if (navigator.onLine) {
           const attemptQuery = query(
@@ -114,7 +112,6 @@ export const Exam = {
             this.startedAt = new Date();
           }
         } else {
-          // offline live exam – create local attempt
           const localId = 'local_' + Date.now() + '_' + examId;
           this.currentAttemptId = localId;
           this.ans = new Array(questions.length).fill(null);
@@ -122,14 +119,12 @@ export const Exam = {
           this.startedAt = new Date();
         }
       } else {
-        // mock / practice – always fresh
         this.ans = new Array(questions.length).fill(null);
         this.marked = new Array(questions.length).fill(false);
         this.startedAt = new Date();
         this.currentAttemptId = null;
       }
 
-      // Remove correct answers from UI questions
       const questionsWithoutCorrect = questions.map(({ correct, ...rest }) => rest);
       this.d = { ...exam, qs: questionsWithoutCorrect, fullQuestions: questions };
       this.currentPage = 0;
@@ -204,7 +199,8 @@ export const Exam = {
     if (!panel) return;
     panel.innerHTML = '';
     const perPage = 25;
-    this.d.qs.forEach((_, i) => {
+    const total = this.d?.qs?.length || 0;
+    for (let i = 0; i < total; i++) {
       const btn = document.createElement('button');
       btn.className = 'question-number-btn';
       if (this.ans[i] !== null) btn.classList.add('answered');
@@ -212,7 +208,7 @@ export const Exam = {
       const end = start + perPage;
       if (i >= start && i < end) btn.classList.add('current-view');
       btn.textContent = i + 1;
-      btn.onclick = () => {
+      btn.addEventListener('click', () => {
         const targetPage = Math.floor(i / perPage);
         if (targetPage !== this.currentPage) {
           this.currentPage = targetPage;
@@ -227,9 +223,9 @@ export const Exam = {
           }
         }, 50);
         document.getElementById('review-panel')?.classList.remove('show');
-      };
+      });
       panel.appendChild(btn);
-    });
+    }
   },
 
   async render() {
@@ -317,21 +313,18 @@ export const Exam = {
   sel(qi, oi) {
     if (this.ans[qi] !== null) return;
     this.ans[qi] = oi;
-    // Update UI locally
     const questionDiv = document.getElementById(`q-${qi}`);
     if (questionDiv) {
       const buttons = questionDiv.querySelectorAll('.option-btn');
       buttons.forEach((btn, idx) => {
         if (idx === oi) {
           btn.classList.add('selected');
-          // Add check icon if not already present
           if (!btn.querySelector('.fa-check-circle')) {
             const icon = document.createElement('i');
             icon.className = 'fas fa-check-circle text-green-600 ml-2 text-lg';
             btn.appendChild(icon);
           }
         } else {
-          // Remove any existing check icons from other options
           const existingIcon = btn.querySelector('.fa-check-circle');
           if (existingIcon) existingIcon.remove();
         }
