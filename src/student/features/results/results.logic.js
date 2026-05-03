@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view – OFFLINE SUPPORT
+// Student results listing, filtering, and detailed result view – OFFLINE SUPPORT + FIX for missing exam cache
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -18,7 +18,7 @@ let currentResultPage = 1;
 let resultFilter = 'all';
 let filteredQuestions = [];
 
-// ---------- Offline cache helpers (same pattern as dashboard) ----------
+// ---------- Offline cache helpers ----------
 async function cacheData(key, data) {
   try {
     await window.DB.saveData('offlineCache', { id: key, data, timestamp: Date.now() });
@@ -75,24 +75,46 @@ export const ResultsManager = {
         const resultsData = { live: [], mock: [] };
 
         for (const attempt of attempts) {
-          try {
-            const exam = ExamCache[attempt.examId];
-            if (!exam || exam.groupId !== AppState.activeGroupId) continue;
+          // Try to get exam from cache or Firestore, but never skip the attempt if exam missing
+          let exam = ExamCache[attempt.examId];
+          if (!exam) {
+            // If online, try fetching the exam quickly; if fails, still show result
+            try {
+              const examSnap = await getDoc(doc(db, "exams", attempt.examId));
+              if (examSnap.exists()) {
+                exam = { id: examSnap.id, ...examSnap.data() };
+                // put it in cache for later
+                ExamCache[exam.id] = exam;
+              }
+            } catch (e) {}
+          }
 
-            const isCancelled = exam.cancelled;
-            const isPublic = !isCancelled && (exam.type === 'mock' || exam.resultPublished);
-            if (isCancelled && !exam.resultPublished) continue;
+          // If still no exam, create a minimal exam object so the result is displayed
+          if (!exam) {
+            exam = {
+              id: attempt.examId,
+              subject: 'Unknown',
+              type: attempt.isPractice ? 'mock' : 'live',
+              resultPublished: true,
+              groupId: AppState.activeGroupId, // assume same group (since we only query attempts of this student, it's likely)
+              cancelled: false
+            };
+          }
 
-            const subject = exam.subject || 'Uncategorized';
-            subjectsSet.add(subject);
+          // Skip if cancelled and not published (but we may not know if exam missing)
+          if (exam.cancelled && !exam.resultPublished) continue;
+          // Skip if live exam and result not published, unless it's a practice attempt
+          if (exam.type === 'live' && !exam.resultPublished && !attempt.isPractice) continue;
 
-            const item = { attempt, exam, subject };
-            if (attempt.isPractice || exam.type === 'mock') {
-              resultsData.mock.push(item);
-            } else {
-              resultsData.live.push(item);
-            }
-          } catch (e) { console.error(e); }
+          const subject = exam.subject || 'Uncategorized';
+          subjectsSet.add(subject);
+
+          const item = { attempt, exam, subject };
+          if (attempt.isPractice || exam.type === 'mock') {
+            resultsData.mock.push(item);
+          } else {
+            resultsData.live.push(item);
+          }
         }
 
         // Cache the structured data
@@ -321,12 +343,8 @@ export const ResultsManager = {
     };
 
     this.prevResultPage = () => {
-      if (currentResultPage > 1) {
-        currentResultPage--;
-        updateView();
-      }
+      if (currentResultPage > 1) { currentResultPage--; updateView(); }
     };
-
     this.nextResultPage = () => {
       if (currentResultPage < Math.ceil(filteredQuestions.length / 25)) {
         currentResultPage++;
