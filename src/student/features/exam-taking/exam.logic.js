@@ -1,5 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// Exam taking logic – fixed review panel jump & green check on selection
+// Exam taking logic – Desktop sidebar review panel & mobile floating panel
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -130,7 +130,9 @@ export const Exam = {
       this.currentPage = 0;
       this.isPractice = forcePractice || exam.type === 'mock';
 
+      // Show the mobile floating button only on small screens; desktop sidebar handles itself
       document.getElementById('review-panel-btn')?.classList.remove('hidden');
+      document.getElementById('review-panel-btn')?.classList.add('md:!hidden'); // hide on desktop
 
       await this.render();
       this.runTimer(exam.duration * 60);
@@ -180,6 +182,7 @@ export const Exam = {
   toggleMark(index) {
     this.marked[index] = !this.marked[index];
     const btn = document.getElementById(`mark-btn-${index}`);
+    const sidebarBtn = document.getElementById(`sidebar-btn-${index}`);
     if (btn) {
       if (this.marked[index]) {
         btn.classList.add('text-amber-500');
@@ -191,41 +194,66 @@ export const Exam = {
         btn.innerHTML = '<i class="far fa-bookmark"></i> চিহ্নিত করুন';
       }
     }
+    if (sidebarBtn) {
+      if (this.marked[index]) {
+        sidebarBtn.classList.add('text-amber-500');
+        sidebarBtn.classList.remove('text-gray-400');
+        sidebarBtn.innerHTML = '<i class="fas fa-bookmark"></i>';
+      } else {
+        sidebarBtn.classList.remove('text-amber-500');
+        sidebarBtn.classList.add('text-gray-400');
+        sidebarBtn.innerHTML = '<i class="far fa-bookmark"></i>';
+      }
+    }
     this.updateReviewPanel();
   },
 
+  // Populates both the mobile panel and the desktop sidebar
   updateReviewPanel() {
     const panel = document.getElementById('question-numbers');
-    if (!panel) return;
-    panel.innerHTML = '';
+    const sidebar = document.getElementById('question-numbers-sidebar');
+    const buttonsHTML = this._buildQuestionButtons();
+    if (panel) panel.innerHTML = buttonsHTML;
+    if (sidebar) sidebar.innerHTML = buttonsHTML;
+  },
+
+  _buildQuestionButtons() {
+    if (!this.d || !this.d.qs) return '';
     const perPage = 25;
-    const total = this.d?.qs?.length || 0;
-    for (let i = 0; i < total; i++) {
-      const btn = document.createElement('button');
-      btn.className = 'question-number-btn';
-      if (this.ans[i] !== null) btn.classList.add('answered');
+    let html = '';
+    for (let i = 0; i < this.d.qs.length; i++) {
+      const isAnswered = this.ans[i] !== null;
       const start = this.currentPage * perPage;
       const end = start + perPage;
-      if (i >= start && i < end) btn.classList.add('current-view');
-      btn.textContent = i + 1;
-      btn.addEventListener('click', () => {
-        const targetPage = Math.floor(i / perPage);
-        if (targetPage !== this.currentPage) {
-          this.currentPage = targetPage;
-          this.render();
-        }
-        setTimeout(() => {
-          const el = document.getElementById(`q-${i}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'instant', block: 'center' });
-            el.style.backgroundColor = 'rgba(79,70,229,0.1)';
-            setTimeout(() => el.style.backgroundColor = '', 1000);
-          }
-        }, 50);
-        document.getElementById('review-panel')?.classList.remove('show');
-      });
-      panel.appendChild(btn);
+      const isCurrentView = i >= start && i < end;
+      html += `
+        <button
+          class="question-number-btn ${isAnswered ? 'answered' : ''} ${isCurrentView ? 'current-view' : ''}"
+          onclick="Exam.jumpToQuestion(${i})"
+          id="sidebar-btn-${i}">
+          ${i + 1}
+        </button>`;
     }
+    return html;
+  },
+
+  jumpToQuestion(index) {
+    const perPage = 25;
+    const targetPage = Math.floor(index / perPage);
+    if (targetPage !== this.currentPage) {
+      this.currentPage = targetPage;
+      this.render();
+    }
+    setTimeout(() => {
+      const el = document.getElementById(`q-${index}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.backgroundColor = 'rgba(79,70,229,0.1)';
+        setTimeout(() => el.style.backgroundColor = '', 1000);
+      }
+    }, 100);
+    // Close mobile panel if open
+    document.getElementById('review-panel')?.classList.remove('show');
   },
 
   async render() {
@@ -284,6 +312,7 @@ export const Exam = {
     const practiceIndicator = this.isPractice ?
       '<span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300 px-2 py-1 rounded inline-block mb-1"><i class="fas fa-flask"></i> অনুশীলন</span>' : '';
 
+    // Header (full width above split)
     const headerHTML = `
     <div class="sticky top-0 border-b px-4 py-3 flex justify-between items-center z-30 shadow-md bg-white/95 dark:bg-gray-900/95">
       <div>
@@ -299,12 +328,26 @@ export const Exam = {
       <button onclick="Exam.sub()" class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow hover:from-indigo-600 hover:to-indigo-700 transition">জমা দিন</button>
     </div>`;
 
-    document.getElementById('app-container').innerHTML = `
+    // Desktop layout: header + (sidebar + main content)
+    // Mobile layout: header + main content (sidebar hidden), floating panel via button
+    const layoutHTML = `
       ${headerHTML}
-      <div class="p-4 pb-20 min-h-screen select-none bg-gray-50 dark:bg-gray-900">
-        ${qHTML}
-        ${paginationHTML}
+      <div class="flex flex-col md:flex-row min-h-[calc(100vh-60px)]">
+        <!-- Desktop Sidebar (hidden on mobile) -->
+        <div class="hidden md:block w-0 md:w-1/3 lg:w-1/4 xl:w-1/4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 overflow-y-auto">
+          <div class="text-sm font-bold mb-3 dark:text-white sticky top-0 bg-white dark:bg-gray-900 py-2">প্রশ্নসমূহ</div>
+          <div id="question-numbers-sidebar" class="flex flex-wrap gap-2">
+            <!-- Populated by updateReviewPanel -->
+          </div>
+        </div>
+        <!-- Main Content (questions) -->
+        <div class="flex-1 p-4 pb-20 min-h-0 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          ${qHTML}
+          ${paginationHTML}
+        </div>
       </div>`;
+
+    document.getElementById('app-container').innerHTML = layoutHTML;
 
     loadMathJax(null, document.getElementById('app-container'));
     this.updateReviewPanel();
