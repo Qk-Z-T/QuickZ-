@@ -1,5 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// Exam taking logic – Desktop sidebar review panel & mobile floating panel
+// Exam taking logic – Desktop sidebar + mobile floating panel (both working)
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -130,9 +130,19 @@ export const Exam = {
       this.currentPage = 0;
       this.isPractice = forcePractice || exam.type === 'mock';
 
-      // Show the mobile floating button only on small screens; desktop sidebar handles itself
-      document.getElementById('review-panel-btn')?.classList.remove('hidden');
-      document.getElementById('review-panel-btn')?.classList.add('md:!hidden'); // hide on desktop
+      // Mobile floating button visible only on small screens; sidebar on larger screens
+      const reviewBtn = document.getElementById('review-panel-btn');
+      if (reviewBtn) {
+        reviewBtn.classList.remove('hidden');
+        // On desktop (md and up) hide the floating button, sidebar handles navigation
+        reviewBtn.classList.add('md:!hidden');
+      }
+
+      // Also show the mobile panel toggle logic
+      const reviewPanel = document.getElementById('review-panel');
+      if (reviewPanel) {
+        reviewPanel.classList.remove('show');
+      }
 
       await this.render();
       this.runTimer(exam.duration * 60);
@@ -208,7 +218,6 @@ export const Exam = {
     this.updateReviewPanel();
   },
 
-  // Populates both the mobile panel and the desktop sidebar
   updateReviewPanel() {
     const panel = document.getElementById('question-numbers');
     const sidebar = document.getElementById('question-numbers-sidebar');
@@ -312,7 +321,6 @@ export const Exam = {
     const practiceIndicator = this.isPractice ?
       '<span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300 px-2 py-1 rounded inline-block mb-1"><i class="fas fa-flask"></i> অনুশীলন</span>' : '';
 
-    // Header (full width above split)
     const headerHTML = `
     <div class="sticky top-0 border-b px-4 py-3 flex justify-between items-center z-30 shadow-md bg-white/95 dark:bg-gray-900/95">
       <div>
@@ -328,26 +336,37 @@ export const Exam = {
       <button onclick="Exam.sub()" class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow hover:from-indigo-600 hover:to-indigo-700 transition">জমা দিন</button>
     </div>`;
 
-    // Desktop layout: header + (sidebar + main content)
-    // Mobile layout: header + main content (sidebar hidden), floating panel via button
+    // Desktop: header + flex row (sidebar + main)
+    // Mobile: header + main (no sidebar), floating button toggles review panel overlay
     const layoutHTML = `
       ${headerHTML}
-      <div class="flex flex-col md:flex-row min-h-[calc(100vh-60px)]">
+      <div class="flex flex-col md:flex-row" style="height: calc(100vh - 60px);">
         <!-- Desktop Sidebar (hidden on mobile) -->
-        <div class="hidden md:block w-0 md:w-1/3 lg:w-1/4 xl:w-1/4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 overflow-y-auto">
+        <div class="hidden md:block w-0 md:w-1/3 lg:w-1/4 xl:w-1/4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 overflow-y-auto" style="max-height: calc(100vh - 60px);">
           <div class="text-sm font-bold mb-3 dark:text-white sticky top-0 bg-white dark:bg-gray-900 py-2">প্রশ্নসমূহ</div>
           <div id="question-numbers-sidebar" class="flex flex-wrap gap-2">
             <!-- Populated by updateReviewPanel -->
           </div>
         </div>
         <!-- Main Content (questions) -->
-        <div class="flex-1 p-4 pb-20 min-h-0 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+        <div class="flex-1 p-4 pb-20 overflow-y-auto bg-gray-50 dark:bg-gray-900" style="max-height: calc(100vh - 60px);">
           ${qHTML}
           ${paginationHTML}
         </div>
       </div>`;
 
     document.getElementById('app-container').innerHTML = layoutHTML;
+
+    // Add click listener for mobile floating button (already exists in HTML, but we need to ensure it's set up)
+    const reviewBtn = document.getElementById('review-panel-btn');
+    const reviewPanel = document.getElementById('review-panel');
+    if (reviewBtn && reviewPanel) {
+      // Toggle panel visibility
+      reviewBtn.addEventListener('click', () => {
+        reviewPanel.classList.toggle('show');
+      });
+    }
+    // Also closing on click outside (optional) but keep existing behaviour
 
     loadMathJax(null, document.getElementById('app-container'));
     this.updateReviewPanel();
