@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view – FIX null user crash
+// Student results listing, filtering, and detailed result view – FILTER FIX
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -11,14 +11,14 @@ import {
   doc, getDoc, collection, query, where, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// ---------- Local mutable filter & state ----------
+// Local mutable filter & state
 let resultTypeFilter = 'live';
 let resultsSubjectFilter = 'all';
 let currentResultPage = 1;
 let resultFilter = 'all';
 let filteredQuestions = [];
 
-// ---------- Offline cache helpers ----------
+// Offline cache helpers
 async function cacheData(key, data) {
   try {
     await window.DB.saveData('offlineCache', { id: key, data, timestamp: Date.now() });
@@ -49,8 +49,6 @@ export const ResultsManager = {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে কোর্সে জয়েন করুন', 'warning').then(() => StudentDashboard.showGroupCodeModal?.());
       return;
     }
-
-    // Guard against null auth
     if (!auth.currentUser) {
       Swal.fire('সেশন নেই', 'অনুগ্রহ করে আবার লগইন করুন', 'error').then(() => window.location.reload());
       return;
@@ -62,7 +60,7 @@ export const ResultsManager = {
 
     const cacheKey = 'resultsList_' + AppState.activeGroupId;
 
-    // ---------- ONLINE ----------
+    // ONLINE
     if (navigator.onLine) {
       try {
         const uid = auth.currentUser.uid;
@@ -121,11 +119,10 @@ export const ResultsManager = {
         return;
       } catch (e) {
         console.error(e);
-        // fallback to offline
       }
     }
 
-    // ---------- OFFLINE ----------
+    // OFFLINE
     const cached = await getCachedData(cacheKey);
     if (cached) {
       this._renderResultsList(contentEl, cached.resultsData, cached.subjectList);
@@ -282,17 +279,17 @@ export const ResultsManager = {
 
       const filterBtns = `
         <div class="flex gap-2 mb-4 overflow-x-auto justify-center">
-          <button onclick="ResultsManager.setResultFilter('all')" class="filter-btn ${resultFilter === 'all' ? 'bg-indigo-600 text-white' : ''}">সব</button>
-          <button onclick="ResultsManager.setResultFilter('correct')" class="filter-btn ${resultFilter === 'correct' ? 'bg-indigo-600 text-white' : ''}">সঠিক</button>
-          <button onclick="ResultsManager.setResultFilter('wrong')" class="filter-btn ${resultFilter === 'wrong' ? 'bg-indigo-600 text-white' : ''}">ভুল</button>
-          <button onclick="ResultsManager.setResultFilter('skipped')" class="filter-btn ${resultFilter === 'skipped' ? 'bg-indigo-600 text-white' : ''}">স্কিপ</button>
+          <button onclick="ResultsManager._applyDetailFilter('all')" class="filter-btn ${resultFilter === 'all' ? 'bg-indigo-600 text-white' : ''}">সব</button>
+          <button onclick="ResultsManager._applyDetailFilter('correct')" class="filter-btn ${resultFilter === 'correct' ? 'bg-indigo-600 text-white' : ''}">সঠিক</button>
+          <button onclick="ResultsManager._applyDetailFilter('wrong')" class="filter-btn ${resultFilter === 'wrong' ? 'bg-indigo-600 text-white' : ''}">ভুল</button>
+          <button onclick="ResultsManager._applyDetailFilter('skipped')" class="filter-btn ${resultFilter === 'skipped' ? 'bg-indigo-600 text-white' : ''}">স্কিপ</button>
         </div>`;
 
       const pagination = totalPages > 1 ? `
         <div class="flex justify-center items-center gap-4 mt-4">
-          <button onclick="ResultsManager.prevResultPage()" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded disabled:opacity-50" ${currentResultPage === 1 ? 'disabled' : ''}>পূর্ববর্তী</button>
+          <button onclick="ResultsManager._prevDetailPage()" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded disabled:opacity-50" ${currentResultPage === 1 ? 'disabled' : ''}>পূর্ববর্তী</button>
           <span class="text-xs">পৃষ্ঠা ${currentResultPage}/${totalPages}</span>
-          <button onclick="ResultsManager.nextResultPage()" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded disabled:opacity-50" ${currentResultPage === totalPages ? 'disabled' : ''}>পরবর্তী</button>
+          <button onclick="ResultsManager._nextDetailPage()" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded disabled:opacity-50" ${currentResultPage === totalPages ? 'disabled' : ''}>পরবর্তী</button>
         </div>` : '';
 
       contentEl.innerHTML = `
@@ -325,7 +322,8 @@ export const ResultsManager = {
       loadMathJax(null, contentEl);
     };
 
-    this.setResultFilter = (f) => {
+    // Attach filter and pagination handlers directly to ResultsManager (so onclick can find them)
+    ResultsManager._applyDetailFilter = (f) => {
       resultFilter = f;
       currentResultPage = 1;
       if (f === 'all') {
@@ -340,10 +338,14 @@ export const ResultsManager = {
       updateView();
     };
 
-    this.prevResultPage = () => {
-      if (currentResultPage > 1) { currentResultPage--; updateView(); }
+    ResultsManager._prevDetailPage = () => {
+      if (currentResultPage > 1) {
+        currentResultPage--;
+        updateView();
+      }
     };
-    this.nextResultPage = () => {
+
+    ResultsManager._nextDetailPage = () => {
       if (currentResultPage < Math.ceil(filteredQuestions.length / 25)) {
         currentResultPage++;
         updateView();
