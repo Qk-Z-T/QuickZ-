@@ -1,5 +1,5 @@
 /* src/student/styles.css */
-/* Student‑specific styles – improved glass card visibility & filter contrast */
+/* Student‑specific styles – improved glass card visibility, filter contrast, option boxes */
 
 /* ---- Dashboard cards (old) ---- */
 .dashboard-card {
@@ -196,20 +196,46 @@
 .question-number-btn.answered { background: #10b981; color: white; border-color: #10b981; }
 .question-number-btn.current-view { border: 2px solid #4f46e5; transform: scale(1.1); }
 
-/* ---- Option buttons in exam ---- */
+/* ---- Option buttons in exam (BEAUTIFUL BOXES & GREEN CHECK) ---- */
 .option-btn {
     transition: all 0.2s;
-    border: 1px solid var(--border-light);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    border: 1.5px solid #d1d5db;
+    background: white;
+    color: #1f2937;
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.dark .option-btn {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+.option-btn:hover:not(:disabled):not(.selected) {
+    border-color: #6366f1;
+    background: #f5f7ff;
+}
+.dark .option-btn:hover:not(:disabled):not(.selected) {
+    background: #2d3748;
+    border-color: #818cf8;
 }
 .option-btn.selected {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    box-shadow: 0 0 0 1px rgba(59,130,246,0.2);
+    border-color: #10b981 !important;
+    background: #ecfdf5 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+    font-weight: 500;
 }
-.dark .option-btn.selected { background: #1e3a5f; border-color: #60a5fa; }
-.option-btn.locked { opacity: 0.8; pointer-events: none; }
+.dark .option-btn.selected {
+    background: #064e3b !important;
+    border-color: #34d399 !important;
+}
+.option-btn.locked {
+    pointer-events: none;
+    opacity: 0.85;
+}
+.option-btn:disabled {
+    cursor: default;
+}
 
 /* ---- Answer script cards ---- */
 .ans-card.correct { border-left: 4px solid #10b981; background: #f0fdf4; }
