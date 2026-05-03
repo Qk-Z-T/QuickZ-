@@ -1,5 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// Exam taking logic – Desktop sidebar + mobile floating panel (both working)
+// Exam taking logic – Mobile review panel toggle fixed
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -130,18 +130,40 @@ export const Exam = {
       this.currentPage = 0;
       this.isPractice = forcePractice || exam.type === 'mock';
 
-      // Mobile floating button visible only on small screens; sidebar on larger screens
+      // ---- Mobile review panel toggle setup (once) ----
       const reviewBtn = document.getElementById('review-panel-btn');
-      if (reviewBtn) {
-        reviewBtn.classList.remove('hidden');
-        // On desktop (md and up) hide the floating button, sidebar handles navigation
-        reviewBtn.classList.add('md:!hidden');
-      }
-
-      // Also show the mobile panel toggle logic
       const reviewPanel = document.getElementById('review-panel');
-      if (reviewPanel) {
-        reviewPanel.classList.remove('show');
+      if (reviewBtn && reviewPanel) {
+        // Make the button visible on mobile only (hidden on desktop via md:!hidden)
+        reviewBtn.classList.remove('hidden');
+        reviewBtn.classList.add('md:!hidden');
+
+        // Toggle the panel correctly (remove hidden class when opening)
+        reviewBtn.addEventListener('click', () => {
+          if (reviewPanel.classList.contains('hidden')) {
+            // Open panel
+            reviewPanel.classList.remove('hidden');
+            reviewPanel.classList.add('show');
+          } else {
+            // Close panel
+            reviewPanel.classList.add('hidden');
+            reviewPanel.classList.remove('show');
+          }
+        }, { once: true }); // only attach once, but exam.start may be called multiple times? safer to use a flag
+        // To avoid multiple listeners, we'll remove any previous listener by replacing the button (clone) or simply set a flag.
+        // Simpler: we'll check if already toggling by removing the listener? We'll just add a property to the object.
+        if (!this._mobilePanelToggled) {
+          this._mobilePanelToggled = true;
+          reviewBtn.addEventListener('click', () => {
+            if (reviewPanel.classList.contains('hidden')) {
+              reviewPanel.classList.remove('hidden');
+              reviewPanel.classList.add('show');
+            } else {
+              reviewPanel.classList.add('hidden');
+              reviewPanel.classList.remove('show');
+            }
+          });
+        }
       }
 
       await this.render();
@@ -262,7 +284,11 @@ export const Exam = {
       }
     }, 100);
     // Close mobile panel if open
-    document.getElementById('review-panel')?.classList.remove('show');
+    const reviewPanel = document.getElementById('review-panel');
+    if (reviewPanel && !reviewPanel.classList.contains('hidden')) {
+      reviewPanel.classList.add('hidden');
+      reviewPanel.classList.remove('show');
+    }
   },
 
   async render() {
@@ -336,8 +362,6 @@ export const Exam = {
       <button onclick="Exam.sub()" class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow hover:from-indigo-600 hover:to-indigo-700 transition">জমা দিন</button>
     </div>`;
 
-    // Desktop: header + flex row (sidebar + main)
-    // Mobile: header + main (no sidebar), floating button toggles review panel overlay
     const layoutHTML = `
       ${headerHTML}
       <div class="flex flex-col md:flex-row" style="height: calc(100vh - 60px);">
@@ -356,18 +380,6 @@ export const Exam = {
       </div>`;
 
     document.getElementById('app-container').innerHTML = layoutHTML;
-
-    // Add click listener for mobile floating button (already exists in HTML, but we need to ensure it's set up)
-    const reviewBtn = document.getElementById('review-panel-btn');
-    const reviewPanel = document.getElementById('review-panel');
-    if (reviewBtn && reviewPanel) {
-      // Toggle panel visibility
-      reviewBtn.addEventListener('click', () => {
-        reviewPanel.classList.toggle('show');
-      });
-    }
-    // Also closing on click outside (optional) but keep existing behaviour
-
     loadMathJax(null, document.getElementById('app-container'));
     this.updateReviewPanel();
   },
@@ -498,12 +510,14 @@ export const Exam = {
       Swal.fire({ title: 'ফলাফল', html: `আপনার স্কোর: <strong>${score.toFixed(2)}</strong>`, icon: 'success', confirmButtonText: 'দেখুন' }).then(() => {
         document.getElementById('review-panel-btn')?.classList.add('hidden');
         document.getElementById('review-panel')?.classList.remove('show');
+        document.getElementById('review-panel')?.classList.add('hidden');
         Router.student('results');
       });
     } else {
       Swal.fire('জমা দেওয়া হয়েছে', 'ফলাফলের জন্য অপেক্ষা করুন।', 'success').then(() => {
         document.getElementById('review-panel-btn')?.classList.add('hidden');
         document.getElementById('review-panel')?.classList.remove('show');
+        document.getElementById('review-panel')?.classList.add('hidden');
         Router.student('dashboard');
       });
     }
