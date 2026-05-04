@@ -1,5 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// (Full file – includes inProgress flag, reconnect modal support, noRedirect submit)
+// Full updated – persistent background timer, auto‑submit, one-entry enforcement
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -20,11 +20,17 @@ export const Exam = {
   startedAt: null,
   currentAttemptId: null,
   autoSaveInterval: null,
-  inProgress: false,      // NEW – true when exam is running
+  inProgress: false,
 
   async start(examId, forcePractice = false) {
     if (AppState.userDisabled) {
       Swal.fire('প্রবেশাধিকার নেই', 'আপনার অ্যাকাউন্ট নিষ্ক্রিয়।', 'warning');
+      return;
+    }
+
+    // If already in an active exam, refuse to start another
+    if (this.inProgress) {
+      Swal.fire('পরীক্ষা চলছে', 'আপনার একটি পরীক্ষা ইতিমধ্যে চলমান আছে।', 'warning');
       return;
     }
 
@@ -65,6 +71,9 @@ export const Exam = {
         return;
       }
 
+      // ---------- Attempt management ----------
+      let remainingSeconds = exam.duration * 60; // default full
+
       if (isLive) {
         if (navigator.onLine) {
           const attemptQuery = query(
@@ -82,11 +91,25 @@ export const Exam = {
           });
 
           if (existingAttempt) {
+            // Resuming an existing attempt
             this.currentAttemptId = existingAttempt.id;
             this.ans = existingAttempt.answers || new Array(questions.length).fill(null);
             this.marked = existingAttempt.markedAnswers || new Array(questions.length).fill(false);
             this.startedAt = existingAttempt.startedAt?.toDate() || new Date();
+
+            // Compute remaining time
+            const now = new Date();
+            const elapsed = Math.floor((now - this.startedAt) / 1000);
+            remainingSeconds = Math.max(0, exam.duration * 60 - elapsed);
+
+            // If time already up, auto-submit immediately
+            if (remainingSeconds <= 0) {
+              Swal.fire('সময় শেষ', 'আপনার পরীক্ষার সময় শেষ হয়ে গেছে।', 'info');
+              await this.sub(true, true);
+              return;
+            }
           } else {
+            // Check if already submitted
             const submittedSnap = await getDocs(attemptQuery);
             let hasSubmitted = false;
             submittedSnap.forEach(d => { if (d.data().submittedAt) hasSubmitted = true; });
@@ -94,13 +117,15 @@ export const Exam = {
               Swal.fire('অংশগ্রহণ সম্পন্ন', 'আপনি ইতিমধ্যে এই পরীক্ষায় জমা দিয়েছেন।', 'info');
               return;
             }
+            // New attempt
+            this.startedAt = new Date();
             const newAttemptRef = await addDoc(collection(db, "attempts"), {
               userId: uid,
               userName: AppState.userProfile?.name || auth.currentUser.displayName,
               examId,
               examTitle: exam.title,
               status: 'in-progress',
-              startedAt: new Date(),
+              startedAt: this.startedAt,
               answers: [],
               markedAnswers: [],
               score: 0,
@@ -110,29 +135,67 @@ export const Exam = {
             this.currentAttemptId = newAttemptRef.id;
             this.ans = new Array(questions.length).fill(null);
             this.marked = new Array(questions.length).fill(false);
-            this.startedAt = new Date();
+            // remainingSeconds stays full
           }
         } else {
+          // Offline: try to resume local progress
           const localId = 'local_' + Date.now() + '_' + examId;
-          this.currentAttemptId = localId;
-          this.ans = new Array(questions.length).fill(null);
-          this.marked = new Array(questions.length).fill(false);
-          this.startedAt = new Date();
+          const savedProgress = localStorage.getItem('currentExamProgress');
+          if (savedProgress) {
+            try {
+              const prog = JSON.parse(savedProgress);
+              if (prog.examId === examId) {
+                this.currentAttemptId = prog.firestoreId || localId;
+                this.ans = prog.answers || new Array(questions.length).fill(null);
+                this.marked = prog.markedAnswers || new Array(questions.length).fill(false);
+                this.startedAt = new Date(prog.startedAt || Date.now());
+                const now = new Date();
+                const elapsed = Math.floor((now - this.startedAt) / 1000);
+                remainingSeconds = Math.max(0, exam.duration * 60 - elapsed);
+              } else {
+                this.currentAttemptId = localId;
+                this.ans = new Array(questions.length).fill(null);
+                this.marked = new Array(questions.length).fill(false);
+                this.startedAt = new Date();
+              }
+            } catch(e) {
+              this.currentAttemptId = localId;
+              this.ans = new Array(questions.length).fill(null);
+              this.marked = new Array(questions.length).fill(false);
+              this.startedAt = new Date();
+            }
+          } else {
+            this.currentAttemptId = localId;
+            this.ans = new Array(questions.length).fill(null);
+            this.marked = new Array(questions.length).fill(false);
+            this.startedAt = new Date();
+          }
+          // Cache progress locally
+          localStorage.setItem('currentExamProgress', JSON.stringify({
+            firestoreId: this.currentAttemptId,
+            examId: examId,
+            answers: this.ans,
+            markedAnswers: this.marked,
+            startedAt: this.startedAt.toISOString(),
+            status: 'in-progress'
+          }));
         }
       } else {
+        // mock/practice – always fresh attempt
         this.ans = new Array(questions.length).fill(null);
         this.marked = new Array(questions.length).fill(false);
         this.startedAt = new Date();
         this.currentAttemptId = null;
+        // remainingSeconds stays full
       }
 
       const questionsWithoutCorrect = questions.map(({ correct, ...rest }) => rest);
       this.d = { ...exam, qs: questionsWithoutCorrect, fullQuestions: questions };
       this.currentPage = 0;
       this.isPractice = forcePractice || exam.type === 'mock';
-      this.inProgress = true;                     // পরীক্ষা চলছে
+      this.inProgress = true;
 
-      // মোবাইল ফ্লোটিং বাটন চালু
+      // Setup mobile review panel toggle
       const reviewBtn = document.getElementById('review-panel-btn');
       const reviewPanel = document.getElementById('review-panel');
       if (reviewBtn && reviewPanel) {
@@ -153,7 +216,7 @@ export const Exam = {
       }
 
       await this.render();
-      this.runTimer(exam.duration * 60);
+      this.runTimer(remainingSeconds); // start with remaining time
       this.updateReviewPanel();
 
       if (isLive) this.startAutoSave();
@@ -178,8 +241,10 @@ export const Exam = {
       if (!this.currentAttemptId || !this.d) return;
       const progress = {
         firestoreId: this.currentAttemptId,
+        examId: this.d.id,
         answers: this.ans,
         markedAnswers: this.marked,
+        startedAt: this.startedAt.toISOString(),
         status: 'in-progress',
         lastSaved: new Date().toISOString()
       };
@@ -406,12 +471,22 @@ export const Exam = {
     }
   },
 
-  runTimer(sec) {
-    this.t = setInterval(() => {
-      sec--;
+  runTimer(remainingSec) {
+    if (this.t) clearInterval(this.t);
+    let sec = remainingSec;
+    const updateDisplay = () => {
       const el = document.getElementById('tm');
       if (el) el.innerText = `${Math.floor(sec/60)}:${(sec%60).toString().padStart(2,'0')}`;
-      if (sec <= 0) this.sub(true);
+    };
+    updateDisplay();
+
+    this.t = setInterval(() => {
+      sec--;
+      updateDisplay();
+      if (sec <= 0) {
+        clearInterval(this.t);
+        this.sub(true);
+      }
     }, 1000);
   },
 
