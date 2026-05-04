@@ -1,5 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// Exam taking logic – Mobile review panel toggle fixed
+// (Full file – includes inProgress flag, reconnect modal support, noRedirect submit)
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -20,6 +20,7 @@ export const Exam = {
   startedAt: null,
   currentAttemptId: null,
   autoSaveInterval: null,
+  inProgress: false,      // NEW – true when exam is running
 
   async start(examId, forcePractice = false) {
     if (AppState.userDisabled) {
@@ -129,29 +130,14 @@ export const Exam = {
       this.d = { ...exam, qs: questionsWithoutCorrect, fullQuestions: questions };
       this.currentPage = 0;
       this.isPractice = forcePractice || exam.type === 'mock';
+      this.inProgress = true;                     // পরীক্ষা চলছে
 
-      // ---- Mobile review panel toggle setup (once) ----
+      // মোবাইল ফ্লোটিং বাটন চালু
       const reviewBtn = document.getElementById('review-panel-btn');
       const reviewPanel = document.getElementById('review-panel');
       if (reviewBtn && reviewPanel) {
-        // Make the button visible on mobile only (hidden on desktop via md:!hidden)
         reviewBtn.classList.remove('hidden');
         reviewBtn.classList.add('md:!hidden');
-
-        // Toggle the panel correctly (remove hidden class when opening)
-        reviewBtn.addEventListener('click', () => {
-          if (reviewPanel.classList.contains('hidden')) {
-            // Open panel
-            reviewPanel.classList.remove('hidden');
-            reviewPanel.classList.add('show');
-          } else {
-            // Close panel
-            reviewPanel.classList.add('hidden');
-            reviewPanel.classList.remove('show');
-          }
-        }, { once: true }); // only attach once, but exam.start may be called multiple times? safer to use a flag
-        // To avoid multiple listeners, we'll remove any previous listener by replacing the button (clone) or simply set a flag.
-        // Simpler: we'll check if already toggling by removing the listener? We'll just add a property to the object.
         if (!this._mobilePanelToggled) {
           this._mobilePanelToggled = true;
           reviewBtn.addEventListener('click', () => {
@@ -283,7 +269,6 @@ export const Exam = {
         setTimeout(() => el.style.backgroundColor = '', 1000);
       }
     }, 100);
-    // Close mobile panel if open
     const reviewPanel = document.getElementById('review-panel');
     if (reviewPanel && !reviewPanel.classList.contains('hidden')) {
       reviewPanel.classList.add('hidden');
@@ -365,14 +350,10 @@ export const Exam = {
     const layoutHTML = `
       ${headerHTML}
       <div class="flex flex-col md:flex-row" style="height: calc(100vh - 60px);">
-        <!-- Desktop Sidebar (hidden on mobile) -->
         <div class="hidden md:block w-0 md:w-1/3 lg:w-1/4 xl:w-1/4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 overflow-y-auto" style="max-height: calc(100vh - 60px);">
           <div class="text-sm font-bold mb-3 dark:text-white sticky top-0 bg-white dark:bg-gray-900 py-2">প্রশ্নসমূহ</div>
-          <div id="question-numbers-sidebar" class="flex flex-wrap gap-2">
-            <!-- Populated by updateReviewPanel -->
-          </div>
+          <div id="question-numbers-sidebar" class="flex flex-wrap gap-2"></div>
         </div>
-        <!-- Main Content (questions) -->
         <div class="flex-1 p-4 pb-20 overflow-y-auto bg-gray-50 dark:bg-gray-900" style="max-height: calc(100vh - 60px);">
           ${qHTML}
           ${paginationHTML}
@@ -434,10 +415,11 @@ export const Exam = {
     }, 1000);
   },
 
-  async sub(auto = false) {
+  async sub(auto = false, noRedirect = false) {
     if (!auto && !confirm('পরীক্ষা জমা দিতে চান?')) return;
     clearInterval(this.t);
     if (this.autoSaveInterval) clearInterval(this.autoSaveInterval);
+    this.inProgress = false;
 
     let fullQs, fullExam;
     if (this.d.fullQuestions) {
@@ -504,6 +486,8 @@ export const Exam = {
     } else {
       await this._saveOffline(submissionData);
     }
+
+    if (noRedirect) return;
 
     const showInstant = fullExam.type === 'mock' || this.isPractice || !navigator.onLine;
     if (showInstant) {
