@@ -1,7 +1,8 @@
 // src/student/core/router.js
 // Student portal routing – boxed menu items, auto‑close mobile drawer,
 // NO teacher code required, missing course redirects to courses page,
-// Refresh stays on current page, back button from home goes to root
+// Refresh stays on current page, back button from home goes to root,
+// College name mandatory for HSC/Admission
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState, clearListeners, refreshExamCache } from './state.js';
@@ -172,7 +173,6 @@ export const Router = {
 
     refreshExamCache();
 
-    // Determine initial page from URL hash (if valid)
     const hash = window.location.hash ? window.location.hash.substring(1) : '';
     const validPages = ['dashboard', 'courses', 'rank', 'results', 'analysis', 'notices', 'management', 'profile'];
     let initialPage = 'dashboard';
@@ -180,10 +180,7 @@ export const Router = {
       initialPage = hash;
     }
 
-    // Replace current history entry with this page so back navigation works properly
     window.history.replaceState({ route: initialPage }, '', `#${initialPage}`);
-
-    // Load the initial page without adding another history entry
     await Router._loadPage(initialPage, true);
 
     StudentDashboard.initNotificationListener();
@@ -196,7 +193,6 @@ export const Router = {
     }, 2000);
   },
 
-  // Internal page loader; isInitial = true uses replaceState, false uses pushState
   _loadPage(page, isInitial = false) {
     const updateHistory = (route) => {
       if (isInitial) {
@@ -240,7 +236,6 @@ export const Router = {
         updateHistory('management');
         break;
       default:
-        // fallback
         renderPage('dashboard', (el) => { el.innerHTML = `<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>`; StudentDashboard.loadDashboard(); });
         updateHistory('dashboard');
     }
@@ -282,7 +277,10 @@ export const Router = {
                 <input type="text" id="school-name" class="form-input" placeholder="Enter school name" required>
               </div>
               <div>
-                <label class="form-label">College/University Name</label>
+                <label class="form-label" id="college-label">
+                  College/University Name
+                  <span id="college-required-star" class="required" style="display:none;">*</span>
+                </label>
                 <input type="text" id="college-name" class="form-input" placeholder="Enter college/university name">
               </div>
               <div>
@@ -306,7 +304,6 @@ export const Router = {
                   <option value="Commerce">Commerce</option>
                 </select>
               </div>
-              <!-- TEACHER CODE FIELD REMOVED -->
               <button type="button" onclick="window.saveStudentProfile()" class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 text-white py-3 rounded-xl font-bold mt-4">
                 Save Profile & Continue
               </button>
@@ -317,10 +314,27 @@ export const Router = {
 
       const classSelect = document.getElementById('class-level');
       const streamGroup = document.getElementById('admission-stream-group');
+      const collegeInput = document.getElementById('college-name');
+      const collegeRequiredStar = document.getElementById('college-required-star');
+
+      function updateCollegeRequirement() {
+        const val = classSelect.value;
+        const needsCollege = val === 'HSC' || val === 'Admission';
+        if (collegeInput) {
+          collegeInput.required = needsCollege;
+        }
+        if (collegeRequiredStar) {
+          collegeRequiredStar.style.display = needsCollege ? 'inline' : 'none';
+        }
+        if (streamGroup) {
+          streamGroup.style.display = val === 'Admission' ? 'block' : 'none';
+        }
+      }
+
       if (classSelect) {
-        classSelect.addEventListener('change', function () {
-          streamGroup.style.display = this.value === 'Admission' ? 'block' : 'none';
-        });
+        classSelect.addEventListener('change', updateCollegeRequirement);
+        // initial call
+        updateCollegeRequirement();
       }
 
       window.saveStudentProfile = async () => {
@@ -335,6 +349,10 @@ export const Router = {
 
         if (!fullName || !fatherPhone || !motherPhone || !schoolName || !classLevel) {
           Swal.fire('ত্রুটি', 'সব আবশ্যক তথ্য পূরণ করুন', 'error');
+          return;
+        }
+        if ((classLevel === 'HSC' || classLevel === 'Admission') && !collegeName) {
+          Swal.fire('ত্রুটি', 'এইচএসসি বা এডমিশনের জন্য কলেজের নাম আবশ্যক', 'error');
           return;
         }
         if (classLevel === 'Admission' && !admissionStream) {
@@ -354,7 +372,7 @@ export const Router = {
           collegeName: collegeName || "",
           classLevel,
           admissionStream,
-          teacherCodes: [],          // no teacher code needed
+          teacherCodes: [],
           profileCompleted: true,
           updatedAt: new Date()
         };
@@ -391,8 +409,6 @@ export const Router = {
       return;
     }
 
-    // No teacher code required
-
     const exceptions = ['dashboard', 'profile', 'management', 'courses', 'notices'];
     if (!exceptions.includes(p) && !AppState.activeGroupId) {
       Swal.fire({
@@ -415,7 +431,6 @@ export const Router = {
       return;
     }
 
-    // Load the page with normal history push (adds new entry)
     Router._loadPage(p, false);
   }
 };
@@ -424,17 +439,11 @@ window.Router = Router;
 
 window.addEventListener('popstate', (event) => {
   if (!event.state) {
-    // No history state – we are at the initial entry; go to landing page
     window.location.href = '/';
     return;
   }
   if (event.state.route) {
-    Router._loadPage(event.state.route, false);  // load page without pushing again? We want to reflect the popped state without adding duplicate.
-    // Actually, when the popstate happens, the URL already changed; we should just render the page.
-    // To avoid pushing another state, we can call _loadPage with isInitial = true? No, because that would replace the current state.
-    // Better: we'll just manually render without touching history.
-    // Simplest: call the page loading functions directly, without push.
-    Router._loadPage(event.state.route, true);  // replace the current state to match the popped URL
+    Router._loadPage(event.state.route, true);
   } else {
     Router._loadPage('dashboard', true);
   }
