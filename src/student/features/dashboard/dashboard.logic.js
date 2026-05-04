@@ -1,6 +1,6 @@
 // src/student/features/dashboard/dashboard.logic.js
 // Student dashboard, live & mock exam listing logic, rankings, notices
-// OFFLINE SUPPORT: all key data is cached to IndexedDB + localStorage
+// 24-hour voting window added
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes, lastMockContext } from '../../core/state.js';
@@ -26,7 +26,6 @@ async function cacheData(key, data) {
   try {
     await window.DB.saveData('offlineCache', { id: key, data, timestamp: Date.now() });
   } catch (e) {
-    // fallback to localStorage
     try { localStorage.setItem(key, JSON.stringify(data)); } catch (_) {}
   }
 }
@@ -34,13 +33,20 @@ async function getCachedData(key) {
   try {
     const stored = await window.DB.getData('offlineCache', key);
     if (stored && stored.data) return stored.data;
-  } catch (e) { }
-  // fallback to localStorage
+  } catch (e) {}
   try {
     const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw);
-  } catch (_) { }
+  } catch (_) {}
   return null;
+}
+
+// Check if poll is still open (within 24 hours of creation)
+function isPollOpen(notice) {
+  if (!notice.createdAt) return false;
+  const created = notice.createdAt.toDate ? notice.createdAt.toDate() : new Date(notice.createdAt);
+  const deadline = new Date(created.getTime() + 24 * 60 * 60 * 1000); // +24 hours
+  return new Date() < deadline;
 }
 
 export const StudentDashboard = {
@@ -100,19 +106,14 @@ export const StudentDashboard = {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
 
-    // Listen for notices in all joined groups
     const groups = AppState.joinedGroups || [];
     const groupIds = groups.map(g => g.groupId);
 
     if (groupIds.length === 0) {
-      // no groups, clear badge
       this._updateBadge(0);
       return;
     }
 
-    // For simplicity, we listen on the whole notices collection and filter by groupId.
-    // However, we can't use "in" query across multiple groups easily. We'll listen globally
-    // and compute unread per group, storing in AppState.unreadNoticeCounts.
     const q = query(collection(db, "notices"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       const counts = {};
@@ -125,7 +126,6 @@ export const StudentDashboard = {
 
         if (!counts[gid]) counts[gid] = 0;
 
-        // Check if user has viewed this notice
         const views = data.views || {};
         if (!views[uid]) {
           counts[gid]++;
@@ -458,12 +458,10 @@ export const StudentDashboard = {
           if (e.resultPublished || (e.endTime && new Date(e.endTime) < now)) liveExams.push(e);
         });
 
-        // Get user attempts for status
         const userAttemptsSnap = await getDocs(query(collection(db, "attempts"), where("userId", "==", uid), where("isPractice", "==", false)));
         const userAttempts = {};
         userAttemptsSnap.forEach(d => { userAttempts[d.data().examId] = d.data(); });
 
-        // Attach user attempt info to each exam for offline display
         const pastData = liveExams.map(e => ({
           ...e,
           userAttempt: userAttempts[e.id] || null
@@ -580,7 +578,6 @@ export const StudentDashboard = {
 
     const cacheKey = 'mockFolderCache_' + AppState.activeGroupId;
 
-    // Try online first
     if (navigator.onLine) {
       try {
         const groupDoc = await getDoc(doc(db, "groups", AppState.activeGroupId));
@@ -599,19 +596,17 @@ export const StudentDashboard = {
           return;
         }
         const structure = folderSnap.data();
-        // Cache online result
         await cacheData(cacheKey, structure);
-        localStorage.setItem(cacheKey, JSON.stringify(structure)); // keep legacy
+        localStorage.setItem(cacheKey, JSON.stringify(structure));
         const subjects = structure.mock || [];
         contentEl.innerHTML = this._renderMockHub(subjects, teacherId);
         return;
       } catch (e) {
         console.error('Mock hub online error:', e);
-        // fallback to offline
       }
     }
 
-    // Offline: load from cache
+    // Offline
     const structure = await getCachedData(cacheKey);
     if (structure) {
       const subjects = structure.mock || [];
@@ -682,7 +677,7 @@ export const StudentDashboard = {
       </div>`;
   },
 
-  // ---- Rankings (offline cache) ----
+  // ---- Rankings (two‑step: list → detail) ----
   async loadRankings() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -715,11 +710,20 @@ export const StudentDashboard = {
       return;
     }
     let html = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4">র‍্যাংকিং</h2><p class="text-sm text-gray-500 mb-4">একটি পরীক্ষা বেছে নিন</p>`;
+    // --- TWO COLUMNS ON DESKTOP ---
+    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
     exams.forEach(exam => {
       const date = exam.createdAt?.toDate ? moment(exam.createdAt.toDate()).format('DD MMM, YYYY') : '';
-      html += `<div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border mb-3 flex justify-between items-center"><div><div class="font-bold">${exam.title}</div><div class="text-xs text-gray-500">${date}</div></div><button onclick="StudentDashboard.viewExamRanking('${exam.id}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">View Rank</button></div>`;
+      html += `
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex justify-between items-center">
+          <div>
+            <div class="font-bold">${exam.title}</div>
+            <div class="text-xs text-gray-500">${date}</div>
+          </div>
+          <button onclick="StudentDashboard.viewExamRanking('${exam.id}')" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">View Rank</button>
+        </div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
     contentEl.innerHTML = html;
   },
 
@@ -799,7 +803,7 @@ export const StudentDashboard = {
       </div>`;
   },
 
-  // ---- Notices (offline cache) ----
+  // ---- Notices & Polls with 24-hr limit ----
   async loadNotices() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -813,15 +817,10 @@ export const StudentDashboard = {
     if (navigator.onLine) {
       try {
         const uid = auth.currentUser.uid;
-        const snap = await getDocs(query(
-          collection(db, "notices"),
-          where("groupId", "==", AppState.activeGroupId),
-          orderBy("createdAt", "desc")
-        ));
+        const snap = await getDocs(query(collection(db, "notices"), where("groupId", "==", AppState.activeGroupId), orderBy("createdAt", "desc")));
         const notices = [];
         snap.forEach(d => notices.push({ id: d.id, ...d.data() }));
 
-        // Mark as viewed
         for (const n of notices) {
           const noticeRef = doc(db, "notices", n.id);
           const currentViews = n.views || {};
@@ -843,23 +842,22 @@ export const StudentDashboard = {
   },
 
   _renderNotices(contentEl, notices) {
-    const uid = auth.currentUser.uid;
+    const uid = auth.currentUser?.uid;
     let html = '';
     notices.forEach(n => {
       const isPoll = n.type === 'poll';
       const viewCount = Object.keys(n.views || {}).length;
       const votes = n.votes || {};
       const totalVotes = Object.keys(votes).length;
-      const myVote = votes[uid]; // the option index the user voted for, if any
+      const myVote = votes[uid];
+      const pollOpen = isPoll && isPollOpen(n);
 
       let pollSection = '';
       if (isPoll && n.options && n.options.length > 0) {
         const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
         const counts = {};
         n.options.forEach((_, i) => { counts[i] = 0; });
-        Object.values(votes).forEach(optIdx => {
-          if (counts[optIdx] !== undefined) counts[optIdx]++;
-        });
+        Object.values(votes).forEach(optIdx => { if (counts[optIdx] !== undefined) counts[optIdx]++; });
 
         const optionsHtml = n.options.map((opt, i) => {
           const count = counts[i] || 0;
@@ -878,17 +876,22 @@ export const StudentDashboard = {
             </div>`;
         }).join('');
 
-        const voteButton = myVote === undefined
-          ? `<div class="flex gap-2 mt-2">${n.options.map((opt, i) => `
-             <button onclick="StudentDashboard.castVote('${n.id}', ${i})" class="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold transition">${opt}</button>
-           `).join('')}</div>`
-          : `<div class="mt-2 text-xs text-green-600 font-bold">আপনি ভোট দিয়েছেন</div>`;
+        let voteButtonsHTML = '';
+        if (pollOpen && myVote === undefined) {
+          voteButtonsHTML = `<div class="flex gap-2 mt-2">${n.options.map((opt, i) => `
+            <button onclick="StudentDashboard.castVote('${n.id}', ${i})" class="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold transition">${opt}</button>
+          `).join('')}</div>`;
+        } else if (!pollOpen) {
+          voteButtonsHTML = '<div class="mt-2 text-xs text-amber-600 font-bold">⏳ পোল বন্ধ</div>';
+        } else {
+          voteButtonsHTML = '<div class="mt-2 text-xs text-green-600 font-bold">আপনি ভোট দিয়েছেন</div>';
+        }
 
         pollSection = `
           <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
             <div class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">পোল ফলাফল (মোট ${totalVotes} ভোট)</div>
             ${optionsHtml}
-            ${voteButton}
+            ${voteButtonsHTML}
           </div>`;
       }
 
@@ -915,11 +918,7 @@ export const StudentDashboard = {
         </div>`;
     });
 
-    contentEl.innerHTML = `
-      <div class="p-5 pb-20">
-        <h2 class="text-xl font-bold mb-4 dark:text-white">নোটিশ ও পোল</h2>
-        ${html || '<p class="text-gray-500 dark:text-gray-400 text-center">কোনো নোটিশ নেই</p>'}
-      </div>`;
+    contentEl.innerHTML = `<div class="p-5 pb-20"><h2 class="text-xl font-bold mb-4 dark:text-white">নোটিশ ও পোল</h2>${html || '<p class="text-gray-500 dark:text-gray-400 text-center">কোনো নোটিশ নেই</p>'}</div>`;
   },
 
   async castVote(noticeId, optionIndex) {
@@ -932,17 +931,21 @@ export const StudentDashboard = {
 
       const data = noticeSnap.data();
       const votes = data.votes || {};
-      // If user already voted, do nothing
+
       if (votes[uid] !== undefined) {
         Swal.fire('ইতিমধ্যে ভোট দেওয়া হয়েছে', 'আপনি একবারই ভোট দিতে পারবেন', 'info');
         return;
       }
 
-      // Add vote
+      // Check 24-hour deadline
+      if (!isPollOpen(data)) {
+        Swal.fire('পোল বন্ধ', 'এই পোলের সময়সীমা শেষ হয়েছে', 'error');
+        return;
+      }
+
       votes[uid] = optionIndex;
       await updateDoc(noticeRef, { votes: votes });
 
-      // Refresh the notices display
       this.loadNotices();
     } catch (e) {
       console.error(e);
@@ -951,4 +954,6 @@ export const StudentDashboard = {
   }
 };
 
+// Helper must be accessible globally for inline onclick in _renderNotices
+window.isPollOpen = isPollOpen;
 window.StudentDashboard = StudentDashboard;
