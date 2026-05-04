@@ -1,8 +1,5 @@
 // src/student/core/router.js
-// Student portal routing – boxed menu items, auto‑close mobile drawer,
-// NO teacher code required, missing course redirects to courses page,
-// Refresh stays on current page, back button from home goes to root,
-// College name mandatory for HSC/Admission
+// (Full updated file – including exam-in-progress modal)
 
 import { auth, db } from '../../shared/config/firebase.js';
 import { AppState, clearListeners, refreshExamCache } from './state.js';
@@ -333,7 +330,6 @@ export const Router = {
 
       if (classSelect) {
         classSelect.addEventListener('change', updateCollegeRequirement);
-        // initial call
         updateCollegeRequirement();
       }
 
@@ -404,6 +400,31 @@ export const Router = {
     window.currentRouteId = (window.currentRouteId || 0) + 1;
     clearListeners();
 
+    // ---------- চলমান পরীক্ষা থাকলে মোডাল দেখানো ----------
+    if (window.Exam && Exam.inProgress) {
+      const result = await Swal.fire({
+        title: 'পরীক্ষা চলছে',
+        html: 'আপনার একটি চলমান পরীক্ষা রয়েছে। আপনি কি করতে চান?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'পরীক্ষায় ফিরুন',
+        cancelButtonText: 'পরীক্ষা শেষ করুন',
+        reverseButtons: true,
+        allowOutsideClick: false
+      });
+
+      if (result.isConfirmed) {
+        // Stay on exam page
+        return;
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // End exam
+        await Exam.sub(true, true);  // auto submit, no redirect
+        // Now continue to the intended page
+      } else {
+        return;
+      }
+    }
+
     if (!AppState.profileCompleted && p !== 'profile') {
       Swal.fire('প্রোফাইল প্রয়োজন', 'প্রথমে প্রোফাইল সম্পূর্ণ করুন', 'warning').then(() => Router.showProfileForm());
       return;
@@ -442,6 +463,8 @@ window.addEventListener('popstate', (event) => {
     window.location.href = '/';
     return;
   }
+
+  // Optionally, you can also add exam-in-progress check here if needed
   if (event.state.route) {
     Router._loadPage(event.state.route, true);
   } else {
