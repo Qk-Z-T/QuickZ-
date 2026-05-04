@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view – TWO COLUMNS desktop
+// Detailed result – added "চিহ্নিত" filter, fix explanation label, hide empty explanation
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -140,7 +140,7 @@ export const ResultsManager = {
     const renderCard = (item) => {
       const { attempt, exam } = item;
       return `
-        <div class="glass-card p-4 mb-3 rounded-2xl border border-white/20 shadow-sm">
+        <div class="glass-card p-4 mb-3 rounded-2xl border border-white/20 shadow-sm card-tint-green">
           <div class="flex justify-between items-center">
             <div>
               <div class="font-bold text-sm dark:text-white">${attempt.examTitle}</div>
@@ -170,11 +170,9 @@ export const ResultsManager = {
           <button onclick="ResultsManager.setResultType('live')" class="text-sm font-bold pb-1 ${liveActive}">লাইভ (${filteredLive.length})</button>
           <button onclick="ResultsManager.setResultType('mock')" class="text-sm font-bold pb-1 ${mockActive}">মক (${filteredMock.length})</button>
         </div>
-        <!-- flex-wrap wrap + justify-center so buttons wrap to next line and stay centered -->
-        <div class="flex flex-wrap justify-center gap-2 mb-4">
+        <div class="flex flex-wrap gap-2 mb-4">
           ${filterBtns}
         </div>
-        <!-- TWO COLUMNS ON DESKTOP -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="results-container">
           ${(resultTypeFilter === 'live' ? filteredLive : filteredMock).map(renderCard).join('') || '<div class="text-center py-20 text-gray-400 col-span-full">কোনো ফলাফল নেই</div>'}
         </div>
@@ -192,6 +190,7 @@ export const ResultsManager = {
     this.loadResults();
   },
 
+  // ---------- viewDetailedResult ----------
   async viewDetailedResult(attemptId) {
     if (AppState.userDisabled) return;
     const contentEl = document.getElementById('page-content');
@@ -241,6 +240,8 @@ export const ResultsManager = {
     const accuracy = totalQ > 0 ? ((correct / totalQ) * 100) : 0;
     const wrong = att.answers.reduce((acc, a, i) => acc + (a !== null && a !== qs[i].correct ? 1 : 0), 0);
     const skipped = att.answers.filter(a => a === null).length;
+    const markedCount = (att.markedAnswers || []).filter(m => m).length;
+
     let timeStr = 'N/A';
     if (att.submittedAt && att.startedAt) {
       const diff = Math.floor((att.submittedAt.toDate() - att.startedAt.toDate()) / 1000);
@@ -269,7 +270,7 @@ export const ResultsManager = {
               return `<div class="${cls}"><span>${String.fromCharCode(65+oi)}. ${optText}</span> ${oi === corr ? '<i class="fas fa-check text-green-600"></i>' : oi === u ? '<i class="fas fa-times text-red-600"></i>' : ''}</div>`;
             }).join('')}
           </div>
-          ${q.expl ? `<div class="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-xs">${MathHelper.renderExamContent(q.expl)}</div>` : ''}
+          ${q.expl ? `<div class="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-xs"><span class="font-bold">ব্যাখ্যাঃ</span> ${MathHelper.renderExamContent(q.expl)}</div>` : ''}
         </div>`;
       });
       return h;
@@ -282,11 +283,12 @@ export const ResultsManager = {
       const totalPages = Math.ceil(filteredQuestions.length / perPage);
 
       const filterBtns = `
-        <div class="flex gap-2 mb-4 overflow-x-auto justify-center">
+        <div class="flex flex-wrap gap-2 mb-4">
           <button onclick="ResultsManager._applyDetailFilter('all')" class="filter-btn ${resultFilter === 'all' ? 'bg-indigo-600 text-white' : ''}">সব</button>
           <button onclick="ResultsManager._applyDetailFilter('correct')" class="filter-btn ${resultFilter === 'correct' ? 'bg-indigo-600 text-white' : ''}">সঠিক</button>
           <button onclick="ResultsManager._applyDetailFilter('wrong')" class="filter-btn ${resultFilter === 'wrong' ? 'bg-indigo-600 text-white' : ''}">ভুল</button>
           <button onclick="ResultsManager._applyDetailFilter('skipped')" class="filter-btn ${resultFilter === 'skipped' ? 'bg-indigo-600 text-white' : ''}">স্কিপ</button>
+          <button onclick="ResultsManager._applyDetailFilter('marked')" class="filter-btn ${resultFilter === 'marked' ? 'bg-indigo-600 text-white' : ''}">চিহ্নিত</button>
         </div>`;
 
       const pagination = totalPages > 1 ? `
@@ -320,7 +322,6 @@ export const ResultsManager = {
             </div>
           </div>
           ${filterBtns}
-          <!-- TWO COLUMNS for questions -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             ${renderQuestions(currentQs)}
           </div>
@@ -329,12 +330,17 @@ export const ResultsManager = {
       loadMathJax(null, contentEl);
     };
 
-    // Attach filter and pagination handlers directly to ResultsManager
+    // Attach filter & pagination handlers
     ResultsManager._applyDetailFilter = (f) => {
       resultFilter = f;
       currentResultPage = 1;
       if (f === 'all') {
         filteredQuestions = [...qs];
+      } else if (f === 'marked') {
+        filteredQuestions = qs.filter((q, i) => {
+          const marked = (att.markedAnswers || [])[i] === true;
+          return marked;
+        });
       } else {
         filteredQuestions = qs.filter((q, i) => {
           const u = att.answers[i];
@@ -346,12 +352,8 @@ export const ResultsManager = {
     };
 
     ResultsManager._prevDetailPage = () => {
-      if (currentResultPage > 1) {
-        currentResultPage--;
-        updateView();
-      }
+      if (currentResultPage > 1) { currentResultPage--; updateView(); }
     };
-
     ResultsManager._nextDetailPage = () => {
       if (currentResultPage < Math.ceil(filteredQuestions.length / 25)) {
         currentResultPage++;
