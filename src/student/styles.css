@@ -419,3 +419,83 @@
     border-color: rgba(255, 255, 255, 0.2);
     color: #e2e8f0;
 }
+
+/* ============== NEW COLORED CARD TINTS ============== */
+
+/* Soft indigo tint – used for course cards, live exam list items, etc. */
+.card-tint-indigo {
+    background: #f0f4ff; /* very light indigo */
+    border-color: #d0d9f0;
+}
+.dark .card-tint-indigo {
+    background: #1e2139;
+    border-color: #3a3f5c;
+}
+
+/* Soft emerald tint – used for mock exam cards, passed exams, etc. */
+.card-tint-emerald {
+    background: #ecfdf5;
+    border-color: #c6f6d5;
+}
+.dark .card-tint-emerald {
+    background: #152b20;
+    border-color: #2d4a36;
+}
+
+/* Soft purple tint – notices & polls */
+.card-tint-purple {
+    background: #f5f3ff;
+    border-color: #e4dffb;
+}
+.dark .card-tint-purple {
+    background: #231f3a;
+    border-color: #423c5c;
+}
+
+/* Soft amber tint – past live exams, pending items */
+.card-tint-amber {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+.dark .card-tint-amber {
+    background: #2d2410;
+    border-color: #4d3e1a;
+}
+
+/* Soft rose tint – alerts or special notices */
+.card-tint-rose {
+    background: #fff1f2;
+    border-color: #fecdd3;
+}
+.dark .card-tint-rose {
+    background: #2d1b1e;
+    border-color: #4c2d32;
+}
+
+/* Soft sky tint – general info, analysis cards */
+.card-tint-sky {
+    background: #f0f9ff;
+    border-color: #bae6fd;
+}
+.dark .card-tint-sky {
+    background: #162534;
+    border-color: #2a4a5e;
+}
+
+/* Soft green tint (different from emerald) – success, completed */
+.card-tint-green {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.dark .card-tint-green {
+    background: #14271b;
+    border-color: #2d4a36;
+}
+
+/* Subtle sidebar background tint */
+.desktop-sidebar {
+    background: #fafbfd;
+}
+.dark .desktop-sidebar {
+    background: #0f111a;
+}
