@@ -1,5 +1,5 @@
 // src/student/features/results/results.logic.js
-// Student results listing, filtering, and detailed result view – FILTER FIX
+// Student results listing, filtering, and detailed result view – TWO COLUMNS desktop
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes } from '../../core/state.js';
@@ -171,8 +171,9 @@ export const ResultsManager = {
           <button onclick="ResultsManager.setResultType('mock')" class="text-sm font-bold pb-1 ${mockActive}">মক (${filteredMock.length})</button>
         </div>
         <div class="flex gap-2 mb-4 overflow-x-auto justify-center">${filterBtns}</div>
-        <div id="results-container">
-          ${(resultTypeFilter === 'live' ? filteredLive : filteredMock).map(renderCard).join('') || '<div class="text-center py-20 text-gray-400">কোনো ফলাফল নেই</div>'}
+        <!-- TWO COLUMNS ON DESKTOP -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="results-container">
+          ${(resultTypeFilter === 'live' ? filteredLive : filteredMock).map(renderCard).join('') || '<div class="text-center py-20 text-gray-400 col-span-full">কোনো ফলাফল নেই</div>'}
         </div>
       </div>
     `;
@@ -316,13 +317,16 @@ export const ResultsManager = {
             </div>
           </div>
           ${filterBtns}
-          ${renderQuestions(currentQs)}
+          <!-- TWO COLUMNS for questions -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            ${renderQuestions(currentQs)}
+          </div>
           ${pagination}
         </div>`;
       loadMathJax(null, contentEl);
     };
 
-    // Attach filter and pagination handlers directly to ResultsManager (so onclick can find them)
+    // Attach filter and pagination handlers directly to ResultsManager
     ResultsManager._applyDetailFilter = (f) => {
       resultFilter = f;
       currentResultPage = 1;
