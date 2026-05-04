@@ -170,7 +170,10 @@ export const ResultsManager = {
           <button onclick="ResultsManager.setResultType('live')" class="text-sm font-bold pb-1 ${liveActive}">লাইভ (${filteredLive.length})</button>
           <button onclick="ResultsManager.setResultType('mock')" class="text-sm font-bold pb-1 ${mockActive}">মক (${filteredMock.length})</button>
         </div>
-        <div class="flex gap-2 mb-4 overflow-x-auto justify-center">${filterBtns}</div>
+        <!-- flex-wrap wrap + justify-center so buttons wrap to next line and stay centered -->
+        <div class="flex flex-wrap justify-center gap-2 mb-4">
+          ${filterBtns}
+        </div>
         <!-- TWO COLUMNS ON DESKTOP -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="results-container">
           ${(resultTypeFilter === 'live' ? filteredLive : filteredMock).map(renderCard).join('') || '<div class="text-center py-20 text-gray-400 col-span-full">কোনো ফলাফল নেই</div>'}
