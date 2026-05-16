@@ -91,9 +91,23 @@ onAuthStateChanged(auth, async (user) => {
 
     if (!AppState.currentUser) {
       try {
-        if (navigator.onLine) await Auth.loadTeacherProfile(user.uid);
+        if (navigator.onLine) {
+          // ✅ ঠিক করা হয়েছে: এখন Auth.loadTeacherProfile ফাংশন আছে
+          await Auth.loadTeacherProfile(user.uid);
+        } else {
+          // Offline: try to load from localStorage
+          const cached = localStorage.getItem('teacher_data');
+          if (cached) {
+            AppState.currentUser = JSON.parse(cached);
+          }
+        }
       } catch (e) {
         console.error('Profile load error:', e);
+        // fallback: try to use cached data
+        const cached = localStorage.getItem('teacher_data');
+        if (cached) {
+          AppState.currentUser = JSON.parse(cached);
+        }
       }
       initRealTimeSync();
       Router.initTeacher();
