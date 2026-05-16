@@ -81,6 +81,27 @@ export const Auth = {
     }
   },
 
+  /**
+   * NEW: Load teacher profile from Firestore and update AppState
+   */
+  async loadTeacherProfile(uid) {
+    try {
+      const docRef = doc(db, "teachers", uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        AppState.currentUser = { id: docSnap.id, ...data };
+        localStorage.setItem('teacher_data', JSON.stringify(AppState.currentUser));
+        return AppState.currentUser;
+      } else {
+        throw new Error('Teacher document not found');
+      }
+    } catch (error) {
+      console.error('loadTeacherProfile error:', error);
+      throw error;
+    }
+  },
+
   finalizeTeacher() {
     localStorage.setItem('explicit_logout', 'false');
     localStorage.setItem('teacher_sess', 'true');
