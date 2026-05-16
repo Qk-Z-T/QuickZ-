@@ -3,8 +3,8 @@
 
 import { AppState } from './state.js';
 import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js';
-// CHANGED: import Teacher as TeacherCore (the real export is named Teacher)
-import { Teacher as TeacherCore } from '../teacher-core.js';
+// ঠিক করা হয়েছে: teacher-core.js থেকে Teacher ইম্পোর্ট করুন
+import { Teacher } from '../teacher-core.js';
 
 const validPages = ['home', 'create', 'rank', 'folders', 'management'];
 
@@ -38,10 +38,10 @@ export const Router = {
     if (appContainer) appContainer.classList.remove('hidden');
     if (teacherHeader) teacherHeader.classList.remove('hidden');
 
-    TeacherCore.loadGroupsForSwitcher?.();
+    Teacher.loadGroupsForSwitcher?.();
 
     if (!AppState.selectedGroup) {
-      TeacherCore.selectGroupView?.('home');
+      Teacher.selectGroupView?.('home');
     } else {
       AppState.currentPage = 'home';
       window.history.replaceState({ page: 'home' }, '', `#home`);
@@ -112,12 +112,12 @@ export const Router = {
     if (!validPages.includes(page)) return;
     if (!AppState.selectedGroup && page !== 'management') {
       Swal.fire({ title: 'Select Course', text: 'Please select a course first.', icon: 'warning' });
-      TeacherCore.selectGroupView?.(page);
+      Teacher.selectGroupView?.(page);
       return;
     }
     clearListeners();
     AppState.currentPage = page;
-    TeacherCore.closeMobileSidebar?.();
+    Teacher.closeMobileSidebar?.();
 
     document.querySelectorAll('.sidebar-nav-item.nav-item').forEach(el => el.classList.remove('active'));
     document.getElementById('nav-' + page)?.classList.add('active');
@@ -140,11 +140,11 @@ export const Router = {
     }
 
     const loadPage = {
-      home: () => TeacherCore.homeView?.(),
-      create: () => TeacherCore.createView?.(),
-      rank: () => TeacherCore.rankView?.(),
-      folders: () => TeacherCore.foldersView?.(),
-      management: () => TeacherCore.managementView?.()
+      home: () => Teacher.homeView?.(),
+      create: () => Teacher.createView?.(),
+      rank: () => Teacher.rankView?.(),
+      folders: () => Teacher.foldersView?.(),
+      management: () => Teacher.managementView?.()
     };
     loadPage[page]?.();
 
