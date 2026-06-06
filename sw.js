@@ -1,9 +1,6 @@
 // sw.js - Service Worker for QuickZ
-// This file should be placed in the root directory
-
 const CACHE_NAME = 'quickz-v3';
 
-// Import static assets from assets.js
 importScripts('./assets.js');
 
 self.addEventListener('install', (event) => {
@@ -35,27 +32,18 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   
-  // Skip Firestore requests completely - don't intercept them
-  if (url.includes('firestore.googleapis.com')) {
-    // Just pass through to network
-    return;
+  // 🔥 Firestore রিকোয়েস্ট সম্পূর্ণ বাইপাস করুন
+  if (url.includes('firestore.googleapis.com') ||
+      url.includes('firebaseauth.googleapis.com') ||
+      url.includes('identitytoolkit.googleapis.com')) {
+    return; // নেটওয়ার্কে যেতে দিন
   }
   
-  // Skip Firebase Auth requests
-  if (url.includes('firebaseauth.googleapis.com')) {
-    return;
-  }
-  
-  // Skip Firebase Auth requests
-  if (url.includes('identitytoolkit.googleapis.com')) {
-    return;
-  }
-  
-  // Only handle same-origin requests
+  // শুধু আমাদের ডোমেইনের রিকোয়েস্ট হ্যান্ডেল করুন
   if (!url.startsWith(self.location.origin)) {
     return;
   }
-
+  
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
