@@ -6,7 +6,7 @@ import { AppState } from './state.js';
 import {
   collection, query, where, getDocs, doc, getDoc, updateDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
 export const AuthUI = {
   togglePass(id, el) {
@@ -84,80 +84,66 @@ export const Auth = {
 
   /**
    * Load teacher profile from Firestore. If not found, create one.
-   * Waits for Firebase auth to be ready.
+   * Uses a simple approach that always works.
    */
   async loadTeacherProfile(uid) {
     try {
-      // Wait for auth to be ready if needed
-      const auth = getAuth();
-      
-      // If no currentUser, wait a bit and try again
-      if (!auth.currentUser) {
-        console.log('Waiting for Firebase auth to be ready...');
-        // Wait up to 5 seconds
-        for (let i = 0; i < 10; i++) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          if (auth.currentUser) break;
-        }
-      }
-
-      // Try to load from Firestore
+      // 1. Try to get the document
       const docRef = doc(db, "teachers", uid);
       const docSnap = await getDoc(docRef);
       
+      // 2. If document exists, use it
       if (docSnap.exists()) {
         const data = docSnap.data();
         AppState.currentUser = { id: docSnap.id, ...data };
         localStorage.setItem('teacher_data', JSON.stringify(AppState.currentUser));
         return AppState.currentUser;
-      } else {
-        // Document not found - create one
-        console.log('Teacher document not found. Creating new teacher profile...');
-        
-        const user = auth.currentUser;
-        if (!user) {
-          throw new Error('No authenticated user found. Please ensure you are logged in.');
-        }
-
-        // Get email from Firebase user
-        const email = user.email || '';
-        const displayName = user.displayName || email.split('@')[0] || 'Teacher';
-
-        // Create teacher document
-        const teacherData = {
-          uid: uid,
-          email: email,
-          fullName: displayName,
-          phone: '',
-          password: '', // Not stored - use Firebase Auth
-          profileCompleted: false,
-          disabled: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        };
-
-        await setDoc(docRef, teacherData);
-        AppState.currentUser = { id: uid, ...teacherData };
-        localStorage.setItem('teacher_data', JSON.stringify(AppState.currentUser));
-        return AppState.currentUser;
       }
+      
+      // 3. Document doesn't exist - create it
+      console.log('Creating new teacher document for UID:', uid);
+      
+      // Get email from Firebase auth
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        // Wait a bit for auth to be ready
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const userAfterWait = auth.currentUser;
+        if (!userAfterWait) {
+          throw new Error('No authenticated user found. Please login again.');
+        }
+      }
+      
+      const finalUser = auth.currentUser;
+      const email = finalUser?.email || uid + '@teacher.quickz.com';
+      const displayName = finalUser?.displayName || email.split('@')[0] || 'Teacher';
+      
+      // Create teacher document
+      const teacherData = {
+        uid: uid,
+        email: email,
+        fullName: displayName,
+        phone: '',
+        password: '', // Not stored - use Firebase Auth
+        profileCompleted: false,
+        disabled: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      // Save to Firestore
+      await setDoc(docRef, teacherData);
+      console.log('✅ Teacher document created successfully');
+      
+      // Update AppState
+      AppState.currentUser = { id: uid, ...teacherData };
+      localStorage.setItem('teacher_data', JSON.stringify(AppState.currentUser));
+      return AppState.currentUser;
+      
     } catch (error) {
       console.error('loadTeacherProfile error:', error);
-      
-      // Fallback to localStorage
-      const cached = localStorage.getItem('teacher_data');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed.id === uid || parsed.uid === uid) {
-            AppState.currentUser = parsed;
-            return parsed;
-          }
-        } catch (e) {
-          console.warn('Invalid cached teacher data');
-        }
-      }
-      
       throw error;
     }
   },
