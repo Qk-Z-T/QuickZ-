@@ -18,8 +18,12 @@ let ExamCache = window.ExamCache;
  * Main library view - renders the folder tree and uncategorized exams
  */
 export function foldersView() {
-  if (!AppState.selectedGroup) {
-    Teacher.selectGroupView?.('folders');
+  // Check if selectedGroup exists
+  if (!AppState.selectedGroup || !AppState.selectedGroup.id) {
+    console.warn('No selected group found. Redirecting to group selection.');
+    if (typeof Teacher.selectGroupView === 'function') {
+      Teacher.selectGroupView('folders');
+    }
     return;
   }
 
