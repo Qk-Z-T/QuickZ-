@@ -185,3 +185,30 @@ export function renderCreateForm(type) {
       </div>
     </div>`;
 }
+
+/**
+ * Create View function - renders the exam creation page
+ */
+export function createView() {
+  const appContainer = document.getElementById('app-container');
+  if (!appContainer) return;
+  
+  // Get the exam type from the URL or default to 'live'
+  const urlParams = new URLSearchParams(window.location.search);
+  const type = urlParams.get('type') || 'live';
+  
+  appContainer.innerHTML = renderCreateForm(type);
+  document.getElementById('floating-math-btn')?.classList.remove('hidden');
+  
+  // Load subjects for the selected type
+  const folderStructure = window.folderStructure || { live: [], mock: [] };
+  const subjects = folderStructure[type] || [];
+  const subjectSelect = document.getElementById('nsub');
+  if (subjectSelect) {
+    subjectSelect.innerHTML = `<option value="">Select Subject (Optional)</option>` +
+      subjects.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+  }
+}
+
+// Attach to Teacher object
+window.Teacher.createView = createView;
