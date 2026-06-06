@@ -64,17 +64,22 @@ const isExplicitLogout = localStorage.getItem('explicit_logout') === 'true';
 
 if (cachedTeacherData && !isExplicitLogout) {
   console.log('⚡ Fast Booting Teacher from Local Storage...');
-  const parsed = JSON.parse(cachedTeacherData);
-  AppState.currentUser = parsed;
-  AppState.user = { uid: parsed.id || parsed.uid };
+  try {
+    const parsed = JSON.parse(cachedTeacherData);
+    AppState.currentUser = parsed;
+    AppState.user = { uid: parsed.id || parsed.uid };
 
-  hideSplash();
-  // Only init if we have a valid user
-  if (AppState.currentUser && (AppState.currentUser.id || AppState.currentUser.uid)) {
-    initRealTimeSync();
-    Router.initTeacher();
-  } else {
-    // Invalid cached data, clear it
+    hideSplash();
+    // Only init if we have a valid user
+    if (AppState.currentUser && (AppState.currentUser.id || AppState.currentUser.uid)) {
+      initRealTimeSync();
+      Router.initTeacher();
+    } else {
+      // Invalid cached data, clear it
+      localStorage.removeItem('teacher_data');
+    }
+  } catch (e) {
+    console.warn('Invalid cached teacher data:', e);
     localStorage.removeItem('teacher_data');
   }
 }
@@ -96,7 +101,7 @@ onAuthStateChanged(auth, async (user) => {
     AppState.user = user;
 
     // Try to load teacher profile
-    if (!AppState.currentUser) {
+    if (!AppState.currentUser || AppState.currentUser.id !== user.uid) {
       try {
         // First check localStorage
         const cached = localStorage.getItem('teacher_data');
@@ -118,19 +123,17 @@ onAuthStateChanged(auth, async (user) => {
           } catch (e) {
             console.warn('Firestore teacher profile load failed:', e.message);
             // If cached exists but id mismatched, try to find by uid
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (parsed.uid === user.uid || parsed.id === user.uid) {
-                AppState.currentUser = parsed;
-              }
+            if (cached && !teacherCached) {
+              try {
+                const parsed = JSON.parse(cached);
+                if (parsed.uid === user.uid || parsed.id === user.uid) {
+                  AppState.currentUser = parsed;
+                }
+              } catch(e) {}
             }
           }
         } else if (!navigator.onLine && teacherCached) {
-          // Already set
           console.log('Offline mode: using cached teacher data');
-        } else {
-          // No cache and offline -> can't proceed
-          console.warn('No teacher data available');
         }
       } catch (e) {
         console.error('Profile load error:', e);
