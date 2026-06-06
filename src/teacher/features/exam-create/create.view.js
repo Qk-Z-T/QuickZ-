@@ -208,6 +208,15 @@ export function createView() {
     subjectSelect.innerHTML = `<option value="">Select Subject (Optional)</option>` +
       subjects.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
   }
+
+  // Reinitialize MathEditor
+  if (window.MathEditor && typeof window.MathEditor.init === 'function') {
+    setTimeout(() => {
+      window.MathEditor.init();
+      // Dispatch custom event for math editor
+      document.dispatchEvent(new Event('createViewLoaded'));
+    }, 100);
+  }
 }
 
 // Attach to Teacher object
