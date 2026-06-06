@@ -50,6 +50,12 @@ export const Teacher = {
   },
 
   async loadGroupsForSwitcher() {
+    // ✅ Check if currentUser exists
+    if (!AppState.currentUser || !AppState.currentUser.id) {
+      console.warn('No current user found, skipping group load');
+      return;
+    }
+
     try {
       const groupsQuery = query(collection(db, "groups"),
         where("teacherId", "==", AppState.currentUser.id),
@@ -136,6 +142,13 @@ export const Teacher = {
   },
 
   async selectGroupView(page = 'home') {
+    // ✅ Check if currentUser exists
+    if (!AppState.currentUser || !AppState.currentUser.id) {
+      console.warn('No current user found, showing login');
+      Router.showLogin();
+      return;
+    }
+
     try {
       const groupsQuery = query(collection(db, "groups"),
         where("teacherId", "==", AppState.currentUser.id),
