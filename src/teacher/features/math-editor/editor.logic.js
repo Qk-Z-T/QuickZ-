@@ -7,7 +7,7 @@ export const MathEditor = {
   init() {
     console.log('MathEditor initializing...');
     
-    // Track focused textarea for questions/options/explanation
+    // Track focused textarea
     document.addEventListener('focusin', (e) => {
       if (
         e.target.tagName === 'TEXTAREA' &&
@@ -16,18 +16,13 @@ export const MathEditor = {
           e.target.id.includes('explanation'))
       ) {
         currentFocusedTextarea = e.target;
-        console.log('Focused textarea:', e.target.id);
       }
     });
 
-    // Floating math button toggle - সরাসরি ইভেন্ট লিসেনার
+    // Floating math button - সরাসরি ইভেন্ট
     const floatingMathBtn = document.getElementById('floating-math-btn');
     if (floatingMathBtn) {
-      // পুরানো লিসেনার সরান
-      const newBtn = floatingMathBtn.cloneNode(true);
-      floatingMathBtn.parentNode.replaceChild(newBtn, floatingMathBtn);
-      
-      newBtn.addEventListener('click', function(e) {
+      floatingMathBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         const panel = document.getElementById('math-symbols-panel');
         if (panel) {
@@ -37,17 +32,11 @@ export const MathEditor = {
           } else {
             panel.classList.remove('fixed-position');
           }
-          console.log('Math panel toggled:', panel.classList.contains('show') ? 'open' : 'closed');
-        } else {
-          console.warn('Math symbols panel not found');
         }
       });
-      console.log('Floating math button listener attached');
-    } else {
-      console.warn('Floating math button not found');
     }
 
-    // Preview button clicks - ইভেন্ট ডেলিগেশন
+    // Preview button - ইভেন্ট ডেলিগেশন
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.math-preview-btn');
       if (!btn) return;
@@ -78,7 +67,7 @@ export const MathEditor = {
       }
     });
 
-    // Auto-update preview on input
+    // Auto-update preview
     document.addEventListener('input', (e) => {
       if (
         e.target.tagName === 'TEXTAREA' &&
@@ -94,7 +83,7 @@ export const MathEditor = {
       }
     });
 
-    // Symbol button clicks
+    // Symbol button
     document.addEventListener('click', (e) => {
       const symbolBtn = e.target.closest('.symbol-btn');
       if (symbolBtn) {
@@ -118,12 +107,11 @@ export const MathEditor = {
 
   insertAtCursor(symbol) {
     if (!currentFocusedTextarea) {
-      // Fallback: প্রথম টেক্সটারিয়া খুঁজে নিন
+      // Fallback
       const textareas = document.querySelectorAll('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
       if (textareas.length > 0) {
         currentFocusedTextarea = textareas[0];
       } else {
-        console.warn('No focused textarea found');
         return;
       }
     }
@@ -134,19 +122,19 @@ export const MathEditor = {
     const text = textarea.value;
     const before = text.substring(0, start);
     const after = text.substring(end);
-
+    
     let cursorPos = before.length + symbol.length;
     if (symbol.includes('{}')) {
       cursorPos = before.length + symbol.indexOf('{}') + 1;
     }
-
+    
     textarea.value = before + symbol + after;
     textarea.selectionStart = cursorPos;
     textarea.selectionEnd = cursorPos;
     textarea.dispatchEvent(new Event('input'));
     textarea.focus();
     this.closePanel();
-
+    
     const overlayId = 'overlay-' + textarea.id;
     const overlay = document.getElementById(overlayId);
     if (overlay && overlay.style.display !== 'none') {
@@ -158,28 +146,28 @@ export const MathEditor = {
     const textarea = document.getElementById(textareaId);
     const overlay = document.getElementById('overlay-' + textareaId);
     if (!textarea || !overlay) return;
-
+    
     const content = textarea.value;
     overlay.innerHTML = '';
-
+    
     if (!content.trim()) {
       overlay.innerHTML = '<div class="text-center text-gray-400 p-4 bengali-text">কোনো কন্টেন্ট নেই</div>';
       return;
     }
-
+    
     const previewContent = document.createElement('div');
     previewContent.className = 'math-render bengali-text';
-
+    
     let processedContent = content;
     const hasLatex = /\\[a-zA-Z]|\\[\[\]\(\)]|\^|_|\\frac|\\sqrt|\\sum|\\int|\\lim/.test(content);
     const isWrapped = /\\\(.*\\\)|\\\[.*\\\]/.test(content);
     if (hasLatex && !isWrapped) {
       processedContent = `\\(${content}\\)`;
     }
-
+    
     previewContent.innerHTML = processedContent;
     overlay.appendChild(previewContent);
-
+    
     try {
       if (window.MathJax) {
         MathJax.typeset([previewContent]);
@@ -190,35 +178,26 @@ export const MathEditor = {
   }
 };
 
-// Auto-resize textarea helper
 window.autoResizeTextarea = function(textarea) {
   if (!textarea) return;
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
 };
 
-// DOM রেডি হওয়ার পর ইনিশিয়ালাইজ করুন
+// DOM রেডি হওয়ার পর ইনিশিয়ালাইজ
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     MathEditor.init();
   });
 } else {
-  // DOM ইতিমধ্যে লোড হয়ে গেছে
   MathEditor.init();
 }
 
-// Create view লোড হলে পুনরায় ইনিশিয়ালাইজ করুন
+// Re-initialize on create view load
 document.addEventListener('createViewLoaded', () => {
-  console.log('Create view loaded - reinitializing MathEditor');
   setTimeout(() => {
     MathEditor.init();
   }, 200);
 });
 
-// ম্যানুয়ালি ইনিশিয়ালাইজ করার জন্য একটি ফাংশন
-window.initMathEditor = function() {
-  MathEditor.init();
-};
-
-// Expose globally for inline handlers
 window.MathEditor = MathEditor;
