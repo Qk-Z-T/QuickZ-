@@ -194,6 +194,12 @@ Teacher.clearJson = function () {
 
 // ---------- Create / Update Exam ----------
 Teacher.createExam = async function (isDraft = false) {
+  // ✅ Check if currentUser exists
+  if (!AppState.currentUser || !AppState.currentUser.id) {
+    Swal.fire('Error', 'You are not logged in. Please login again.', 'error');
+    return;
+  }
+
   const confirmText = isDraft ? 'Save to Library as Draft' : 'Publish Exam';
   const confirmResult = await Swal.fire({
     title: confirmText,
@@ -250,7 +256,7 @@ Teacher.createExam = async function (isDraft = false) {
       autoPublish,
       isDraft,
       createdBy: AppState.currentUser.id,
-      teacherCode: AppState.currentUser.teacherCode,
+      teacherCode: AppState.currentUser.teacherCode || '',
       resultPublished: isDraft ? false : (type === 'mock'),
       groupId: AppState.selectedGroup.id,
       groupName: AppState.selectedGroup.name,
@@ -314,6 +320,12 @@ Teacher.createExam = async function (isDraft = false) {
 };
 
 Teacher.updateExistingExam = async function (examId) {
+  // ✅ Check if currentUser exists
+  if (!AppState.currentUser || !AppState.currentUser.id) {
+    Swal.fire('Error', 'You are not logged in. Please login again.', 'error');
+    return;
+  }
+
   try {
     const title = document.getElementById('nt')?.value.trim();
     const duration = document.getElementById('nd')?.value;
