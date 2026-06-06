@@ -1,6 +1,5 @@
 // src/student/features/dashboard/dashboard.logic.js
-// Student dashboard, live & mock exam listing logic, rankings, notices
-// (full updated file – includes ranking search, institution/time, past exam filter alignment, etc.)
+// Full updated – fixed back button after solutions, all features intact
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache, unsubscribes, lastMockContext } from '../../core/state.js';
@@ -48,6 +47,7 @@ function isPollOpen(notice) {
 }
 
 export const StudentDashboard = {
+  // ---- Course Switcher UI helpers ----
   toggleCourseSwitcher() {
     const menu = document.getElementById('course-switcher-menu');
     if (!menu) return;
@@ -344,6 +344,7 @@ export const StudentDashboard = {
     document.getElementById('group-members-modal')?.classList.add('hidden');
   },
 
+  // ---- Live Exams List ----
   async loadLiveExams() {
     const myRouteId = window.currentRouteId;
     if (AppState.userDisabled || !AppState.activeGroupId) return;
@@ -435,6 +436,7 @@ export const StudentDashboard = {
     `;
   },
 
+  // ---- Past Live Exams (with back button fix) ----
   async loadPastLiveExams() {
     if (AppState.userDisabled || !AppState.activeGroupId) return;
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
@@ -466,9 +468,7 @@ export const StudentDashboard = {
         await cacheData(cacheKey, pastData);
         this._renderPastLiveExams(contentEl, pastData);
         return;
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) { console.error(e); }
     }
 
     const cached = await getCachedData(cacheKey);
@@ -508,7 +508,7 @@ export const StudentDashboard = {
         <p class="text-xs text-indigo-500">${exam.subject || 'Uncategorized'} ${exam.chapter ? '• ' + exam.chapter : ''}</p>
         <div class="flex gap-2 mt-2">
           <button onclick="Exam.start('${exam.id}', true)" class="flex-1 bg-blue-600 text-white py-1.5 rounded text-xs font-bold">পরীক্ষা দিন</button>
-          <button onclick="StudentDashboard.viewExamSolutions('${exam.id}', 'live')" class="flex-1 bg-emerald-500 text-white py-1.5 rounded text-xs font-bold">সমাধান</button>
+          <button onclick="StudentDashboard._returnToFunction = () => StudentDashboard.loadPastLiveExams(); StudentDashboard.viewExamSolutions('${exam.id}', 'live')" class="flex-1 bg-emerald-500 text-white py-1.5 rounded text-xs font-bold">সমাধান</button>
         </div>
       </div>`;
 
@@ -532,7 +532,8 @@ export const StudentDashboard = {
     StudentDashboard.loadPastLiveExams();
   },
 
-  async viewExamSolutions(examId, type) {
+  // ---- View Exam Solutions (dynamic back button) ----
+  viewExamSolutions(examId, type) {
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
     if (!contentEl) return;
     if (!navigator.onLine) return;
@@ -542,7 +543,13 @@ export const StudentDashboard = {
     const exam = examDoc.data();
     const questions = JSON.parse(exam.questions);
 
-    let html = `<div class="p-5 pb-24"><button onclick="StudentDashboard.loadPastLiveExams()" class="mb-4 text-xs font-bold text-gray-500"><i class="fas fa-arrow-left"></i> ফিরুন</button><h2 class="font-bold text-xl mb-4">${exam.title} - সমাধান</h2>`;
+    // Build back button using the stored return function
+    const backButtonHtml = `
+      <button onclick="(StudentDashboard._returnToFunction || StudentDashboard.loadPastLiveExams)();" class="mb-4 text-xs font-bold text-gray-500">
+        <i class="fas fa-arrow-left"></i> ফিরুন
+      </button>`;
+
+    let html = `<div class="p-5 pb-24">${backButtonHtml}<h2 class="font-bold text-xl mb-4">${exam.title} - সমাধান</h2>`;
     questions.forEach((q, i) => {
       const qText = MathHelper.renderExamContent(q.q);
       html += `
@@ -567,6 +574,7 @@ export const StudentDashboard = {
     loadMathJax(null, contentEl);
   },
 
+  // ---- Mock Hub & Structure Navigation (with back button fix) ----
   async loadMockHub() {
     if (!AppState.activeGroupId) return;
     const contentEl = setPageContent('<div class="p-10 text-center"><div class="quick-loader mx-auto"></div></div>');
@@ -587,9 +595,7 @@ export const StudentDashboard = {
         localStorage.setItem(cacheKey, JSON.stringify(structure));
         contentEl.innerHTML = this._renderMockHub(structure.mock || [], teacherId);
         return;
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) { console.error(e); }
     }
 
     const structure = await getCachedData(cacheKey);
@@ -654,13 +660,14 @@ export const StudentDashboard = {
             <p class="text-xs text-gray-500 text-center mb-3">মার্ক: ${e.examData?.totalMarks || 0} • সময়: ${e.examData?.duration || 0}মি</p>
             <div class="flex gap-2">
               <button onclick="Exam.start('${e.id}')" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-bold">অনুশীলন শুরু</button>
-              <button onclick="${e.hasAttempted ? `StudentDashboard.viewExamSolutions('${e.id}', 'mock')` : `Swal.fire('আগে পরীক্ষা দিন', 'আপনাকে কমপক্ষে একবার পরীক্ষা দিতে হবে উত্তর দেখতে।', 'warning')`}" class="flex-1 ${e.hasAttempted ? 'bg-emerald-500 text-white' : 'bg-gray-400 text-gray-200'} py-2 rounded-lg text-sm font-bold">${e.hasAttempted ? 'উত্তর দেখুন' : 'আগে পরীক্ষা দিন'}</button>
+              <button onclick="${e.hasAttempted ? `StudentDashboard._returnToFunction = () => StudentDashboard.loadMockExams('${subId}', '${chapId}', '${teacherId}'); StudentDashboard.viewExamSolutions('${e.id}', 'mock')` : `Swal.fire('আগে পরীক্ষা দিন', 'আপনাকে কমপক্ষে একবার পরীক্ষা দিতে হবে উত্তর দেখতে।', 'warning')`}" class="flex-1 ${e.hasAttempted ? 'bg-emerald-500 text-white' : 'bg-gray-400 text-gray-200'} py-2 rounded-lg text-sm font-bold">${e.hasAttempted ? 'উত্তর দেখুন' : 'আগে পরীক্ষা দিন'}</button>
             </div>
           </div>
         `).join('')}
       </div>`;
   },
 
+  // ---- Rankings (two‑step: list → detail) ----
   async loadRankings() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
@@ -845,6 +852,7 @@ export const StudentDashboard = {
     }
   },
 
+  // ---- Notices & Polls ----
   async loadNotices() {
     if (!AppState.activeGroupId) {
       Swal.fire('কোর্স প্রয়োজন', 'প্রথমে একটি কোর্সে জয়েন করুন', 'warning');
