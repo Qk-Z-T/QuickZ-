@@ -66,11 +66,17 @@ if (cachedTeacherData && !isExplicitLogout) {
   console.log('⚡ Fast Booting Teacher from Local Storage...');
   const parsed = JSON.parse(cachedTeacherData);
   AppState.currentUser = parsed;
-  AppState.user = { uid: parsed.id };
+  AppState.user = { uid: parsed.id || parsed.uid };
 
   hideSplash();
-  initRealTimeSync();
-  Router.initTeacher();
+  // Only init if we have a valid user
+  if (AppState.currentUser && (AppState.currentUser.id || AppState.currentUser.uid)) {
+    initRealTimeSync();
+    Router.initTeacher();
+  } else {
+    // Invalid cached data, clear it
+    localStorage.removeItem('teacher_data');
+  }
 }
 
 // Firebase auth observer
@@ -89,33 +95,57 @@ onAuthStateChanged(auth, async (user) => {
     localStorage.setItem('explicit_logout', 'false');
     AppState.user = user;
 
+    // Try to load teacher profile
     if (!AppState.currentUser) {
       try {
-        if (navigator.onLine) {
-          // ✅ ঠিক করা হয়েছে: এখন Auth.loadTeacherProfile ফাংশন আছে
-          await Auth.loadTeacherProfile(user.uid);
-        } else {
-          // Offline: try to load from localStorage
-          const cached = localStorage.getItem('teacher_data');
-          if (cached) {
-            AppState.currentUser = JSON.parse(cached);
+        // First check localStorage
+        const cached = localStorage.getItem('teacher_data');
+        let teacherCached = null;
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.id === user.uid || parsed.uid === user.uid) {
+              teacherCached = parsed;
+              AppState.currentUser = parsed;
+            }
+          } catch(e) {}
+        }
+
+        // If online and no valid cache, try Firestore (will create if missing)
+        if (navigator.onLine && !teacherCached) {
+          try {
+            await Auth.loadTeacherProfile(user.uid);
+          } catch (e) {
+            console.warn('Firestore teacher profile load failed:', e.message);
+            // If cached exists but id mismatched, try to find by uid
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed.uid === user.uid || parsed.id === user.uid) {
+                AppState.currentUser = parsed;
+              }
+            }
           }
+        } else if (!navigator.onLine && teacherCached) {
+          // Already set
+          console.log('Offline mode: using cached teacher data');
+        } else {
+          // No cache and offline -> can't proceed
+          console.warn('No teacher data available');
         }
       } catch (e) {
         console.error('Profile load error:', e);
-        // fallback: try to use cached data
-        const cached = localStorage.getItem('teacher_data');
-        if (cached) {
-          AppState.currentUser = JSON.parse(cached);
-        }
       }
+    }
+
+    // If we have a teacher user, init portal
+    if (AppState.currentUser && (AppState.currentUser.id || AppState.currentUser.uid)) {
       initRealTimeSync();
       Router.initTeacher();
       hideSplash();
     } else {
-      if (navigator.onLine) {
-        Auth.loadTeacherProfile(user.uid).catch(e => console.warn(e));
-      }
+      // No teacher user, show login
+      Router.showLogin();
+      hideSplash();
     }
   } else {
     const explicit = localStorage.getItem('explicit_logout') === 'true';
