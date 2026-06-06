@@ -199,22 +199,10 @@ export function createView() {
   
   appContainer.innerHTML = renderCreateForm(type);
   
-  // Show floating math button
-  const floatingBtn = document.getElementById('floating-math-btn');
-  if (floatingBtn) {
-    floatingBtn.classList.remove('hidden');
-    // Force re-attach event listener by replacing the button
-    const newBtn = floatingBtn.cloneNode(true);
-    floatingBtn.parentNode.replaceChild(newBtn, floatingBtn);
-    // Reinitialize MathEditor
-    if (window.MathEditor && typeof window.MathEditor.init === 'function') {
-      setTimeout(() => {
-        window.MathEditor.init();
-        // Dispatch custom event for math editor
-        document.dispatchEvent(new Event('createViewLoaded'));
-      }, 100);
-    }
-  }
+  // 🔥 ম্যাথ হেল্পার ম্যানুয়ালি সেটআপ
+  setTimeout(() => {
+    setupMathHelper();
+  }, 100);
   
   // Load subjects for the selected type
   const folderStructure = window.folderStructure || { live: [], mock: [] };
@@ -226,5 +214,196 @@ export function createView() {
   }
 }
 
+// 🔥 ম্যাথ হেল্পার সেটআপ ফাংশন
+function setupMathHelper() {
+  // ফ্লোটিং বাটন তৈরি করুন যদি না থাকে
+  let floatingBtn = document.getElementById('floating-math-btn');
+  if (!floatingBtn) {
+    floatingBtn = document.createElement('button');
+    floatingBtn.id = 'floating-math-btn';
+    floatingBtn.className = 'floating-math-btn';
+    floatingBtn.innerHTML = '<i class="fas fa-superscript"></i>';
+    document.body.appendChild(floatingBtn);
+  }
+  floatingBtn.classList.remove('hidden');
+
+  // ম্যাথ প্যানেল তৈরি করুন যদি না থাকে
+  let mathPanel = document.getElementById('math-symbols-panel');
+  if (!mathPanel) {
+    mathPanel = document.createElement('div');
+    mathPanel.id = 'math-symbols-panel';
+    mathPanel.className = 'math-symbols-panel';
+    mathPanel.innerHTML = `
+      <div class="grid grid-cols-4 gap-2 p-2">
+        <button class="symbol-btn" data-symbol="\\frac{}{}">\frac{}{}</button>
+        <button class="symbol-btn" data-symbol="\\sqrt{}">\sqrt{}</button>
+        <button class="symbol-btn" data-symbol="\\sum">\sum</button>
+        <button class="symbol-btn" data-symbol="\\int">\int</button>
+        <button class="symbol-btn" data-symbol="\\alpha">\alpha</button>
+        <button class="symbol-btn" data-symbol="\\beta">\beta</button>
+        <button class="symbol-btn" data-symbol="\\gamma">\gamma</button>
+        <button class="symbol-btn" data-symbol="\\theta">\theta</button>
+        <button class="symbol-btn" data-symbol="\\pi">\pi</button>
+        <button class="symbol-btn" data-symbol="\\infty">\infty</button>
+        <button class="symbol-btn" data-symbol="\\pm">\pm</button>
+        <button class="symbol-btn" data-symbol="\\times">\times</button>
+        <button class="symbol-btn" data-symbol="\\div">\div</button>
+        <button class="symbol-btn" data-symbol="\\approx">\approx</button>
+        <button class="symbol-btn" data-symbol="\\propto">\propto</button>
+        <button class="symbol-btn" data-symbol="\\le">\le</button>
+      </div>
+    `;
+    document.body.appendChild(mathPanel);
+  }
+
+  // বাটন ক্লিক ইভেন্ট
+  floatingBtn.onclick = function(e) {
+    e.stopPropagation();
+    mathPanel.classList.toggle('show');
+    if (mathPanel.classList.contains('show')) {
+      mathPanel.classList.add('fixed-position');
+    } else {
+      mathPanel.classList.remove('fixed-position');
+    }
+  };
+
+  // সিম্বল বাটন ইভেন্ট
+  mathPanel.querySelectorAll('.symbol-btn').forEach(btn => {
+    btn.onclick = function() {
+      const symbol = this.dataset.symbol;
+      insertMathSymbol(symbol);
+      mathPanel.classList.remove('show');
+      mathPanel.classList.remove('fixed-position');
+    };
+  });
+
+  // প্রিভিউ বাটন ইভেন্ট (event delegation)
+  document.querySelectorAll('.math-preview-btn').forEach(btn => {
+    btn.onclick = function() {
+      const textareaId = this.dataset.target;
+      const textarea = document.getElementById(textareaId);
+      if (!textarea) return;
+
+      let overlay = document.getElementById('overlay-' + textareaId);
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'overlay-' + textareaId;
+        overlay.className = 'math-render-overlay';
+        overlay.style.display = 'none';
+        textarea.parentNode.style.position = 'relative';
+        textarea.parentNode.insertBefore(overlay, textarea.nextSibling);
+      }
+
+      if (overlay.style.display === 'none') {
+        overlay.style.display = 'block';
+        textarea.classList.add('math-mode');
+        this.innerHTML = '<i class="fas fa-code"></i>';
+        updateMathOverlay(textareaId);
+      } else {
+        overlay.style.display = 'none';
+        textarea.classList.remove('math-mode');
+        this.innerHTML = '<i class="fas fa-eye"></i>';
+      }
+    };
+  });
+
+  // ইনপুট ইভেন্ট - অটো-আপডেট প্রিভিউ
+  document.querySelectorAll('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea').forEach(textarea => {
+    textarea.oninput = function() {
+      const overlayId = 'overlay-' + this.id;
+      const overlay = document.getElementById(overlayId);
+      if (overlay && overlay.style.display !== 'none') {
+        updateMathOverlay(this.id);
+      }
+    };
+  });
+
+  console.log('✅ Math Helper setup complete');
+}
+
+// 🔥 ম্যাথ সিম্বল ইনসার্ট ফাংশন
+function insertMathSymbol(symbol) {
+  const textareas = document.querySelectorAll('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
+  let activeTextarea = null;
+  
+  // ফোকাস করা টেক্সটএরিয়া খুঁজুন
+  for (const ta of textareas) {
+    if (ta === document.activeElement) {
+      activeTextarea = ta;
+      break;
+    }
+  }
+  
+  if (!activeTextarea && textareas.length > 0) {
+    activeTextarea = textareas[0];
+  }
+  
+  if (!activeTextarea) return;
+  
+  const start = activeTextarea.selectionStart;
+  const end = activeTextarea.selectionEnd;
+  const text = activeTextarea.value;
+  const before = text.substring(0, start);
+  const after = text.substring(end);
+  
+  let cursorPos = before.length + symbol.length;
+  if (symbol.includes('{}')) {
+    cursorPos = before.length + symbol.indexOf('{}') + 1;
+  }
+  
+  activeTextarea.value = before + symbol + after;
+  activeTextarea.selectionStart = cursorPos;
+  activeTextarea.selectionEnd = cursorPos;
+  activeTextarea.dispatchEvent(new Event('input'));
+  activeTextarea.focus();
+  
+  const overlayId = 'overlay-' + activeTextarea.id;
+  const overlay = document.getElementById(overlayId);
+  if (overlay && overlay.style.display !== 'none') {
+    updateMathOverlay(activeTextarea.id);
+  }
+}
+
+// 🔥 ম্যাথ ওভারলে আপডেট ফাংশন
+function updateMathOverlay(textareaId) {
+  const textarea = document.getElementById(textareaId);
+  const overlay = document.getElementById('overlay-' + textareaId);
+  if (!textarea || !overlay) return;
+  
+  const content = textarea.value;
+  overlay.innerHTML = '';
+  
+  if (!content.trim()) {
+    overlay.innerHTML = '<div class="text-center text-gray-400 p-4 bengali-text">কোনো কন্টেন্ট নেই</div>';
+    return;
+  }
+  
+  const previewContent = document.createElement('div');
+  previewContent.className = 'math-render bengali-text';
+  
+  let processedContent = content;
+  const hasLatex = /\\[a-zA-Z]|\\[\[\]\(\)]|\^|_|\\frac|\\sqrt|\\sum|\\int|\\lim/.test(content);
+  const isWrapped = /\\\(.*\\\)|\\\[.*\\\]/.test(content);
+  if (hasLatex && !isWrapped) {
+    processedContent = `\\(${content}\\)`;
+  }
+  
+  previewContent.innerHTML = processedContent;
+  overlay.appendChild(previewContent);
+  
+  try {
+    if (window.MathJax) {
+      MathJax.typeset([previewContent]);
+    }
+  } catch (error) {
+    overlay.innerHTML = `<div class="text-red-500 p-2 bengali-text">রেন্ডারিং ত্রুটি</div>`;
+  }
+}
+
 // Attach to Teacher object
 window.Teacher.createView = createView;
+window.autoResizeTextarea = function(textarea) {
+  if (!textarea) return;
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+};
