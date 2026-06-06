@@ -18,7 +18,7 @@ Teacher.copyPermissionKey = DashboardLogic.copyPermissionKey;
 
 // Feature modules (attach their own methods to Teacher)
 import './features/exam-create/create.logic.js';
-import './features/exam-create/create.view.js';
+import './features/exam-create/create.view.js';  // This now attaches Teacher.createView
 import './features/library/library.logic.js';
 import './features/library/library.view.js';
 import './features/rankings/rankings.logic.js';
