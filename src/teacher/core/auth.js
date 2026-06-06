@@ -4,7 +4,7 @@
 import { db } from '../../shared/config/firebase.js';
 import { AppState } from './state.js';
 import {
-  collection, query, where, getDocs, doc, getDoc, updateDoc
+  collection, query, where, getDocs, doc, getDoc, updateDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 export const AuthUI = {
@@ -82,10 +82,11 @@ export const Auth = {
   },
 
   /**
-   * NEW: Load teacher profile from Firestore and update AppState
+   * Load teacher profile from Firestore. If not found, create a new one.
    */
   async loadTeacherProfile(uid) {
     try {
+      // First try Firestore
       const docRef = doc(db, "teachers", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -94,10 +95,47 @@ export const Auth = {
         localStorage.setItem('teacher_data', JSON.stringify(AppState.currentUser));
         return AppState.currentUser;
       } else {
-        throw new Error('Teacher document not found');
+        // Teacher document not found - create one
+        console.log('Teacher document not found. Creating new teacher profile...');
+        
+        // Get Firebase user info
+        const { getAuth } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
+        const auth = getAuth();
+        const user = auth.currentUser;
+        
+        if (!user) {
+          throw new Error('No authenticated user found');
+        }
+
+        // Create teacher document
+        const teacherData = {
+          uid: uid,
+          email: user.email,
+          fullName: user.displayName || user.email?.split('@')[0] || 'Teacher',
+          phone: '',
+          password: '', // This should be handled by Firebase Auth, not stored here
+          profileCompleted: false,
+          disabled: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        await setDoc(docRef, teacherData);
+        AppState.currentUser = { id: uid, ...teacherData };
+        localStorage.setItem('teacher_data', JSON.stringify(AppState.currentUser));
+        return AppState.currentUser;
       }
     } catch (error) {
       console.error('loadTeacherProfile error:', error);
+      // Fallback to localStorage
+      const cached = localStorage.getItem('teacher_data');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.id || parsed.uid) {
+          AppState.currentUser = parsed;
+          return parsed;
+        }
+      }
       throw error;
     }
   },
@@ -128,7 +166,7 @@ export const Auth = {
 
     try {
       const teacherData = JSON.parse(storedData);
-      const docRef = doc(db, "teachers", teacherData.id);
+      const docRef = doc(db, "teachers", teacherData.id || teacherData.uid);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
@@ -150,11 +188,28 @@ export const Auth = {
         if (typeof window.initRealTimeSync === 'function') window.initRealTimeSync();
         if (window.Router && typeof Router.initTeacher === 'function') Router.initTeacher();
       } else {
-        Auth.logout();
+        // Fallback: use cached data
+        AppState.role = 'teacher';
+        AppState.currentUser = teacherData;
+        const lastGroupId = localStorage.getItem('selectedGroup');
+        if (lastGroupId && lastGroupId !== 'undefined') {
+          AppState.selectedGroup = JSON.parse(lastGroupId);
+        }
+        if (window.Router && typeof Router.initTeacher === 'function') Router.initTeacher();
       }
     } catch (e) {
       console.error("Session Error:", e);
-      Auth.logout();
+      // If online, try to logout, else stay with cached
+      if (navigator.onLine) {
+        Auth.logout();
+      } else {
+        // Offline: use cached data anyway
+        const cached = localStorage.getItem('teacher_data');
+        if (cached) {
+          AppState.currentUser = JSON.parse(cached);
+          if (window.Router && typeof Router.initTeacher === 'function') Router.initTeacher();
+        }
+      }
     }
   },
 
