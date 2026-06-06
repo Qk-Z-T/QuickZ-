@@ -1,5 +1,5 @@
 // src/student/features/exam-taking/exam.logic.js
-// Full updated – persistent background timer, auto‑submit, one-entry enforcement
+// Full exam logic – background timer, resume, reconnect modal, scrolling fix
 
 import { auth, db } from '../../../shared/config/firebase.js';
 import { AppState, ExamCache } from '../../core/state.js';
@@ -28,7 +28,6 @@ export const Exam = {
       return;
     }
 
-    // If already in an active exam, refuse to start another
     if (this.inProgress) {
       Swal.fire('পরীক্ষা চলছে', 'আপনার একটি পরীক্ষা ইতিমধ্যে চলমান আছে।', 'warning');
       return;
@@ -71,8 +70,7 @@ export const Exam = {
         return;
       }
 
-      // ---------- Attempt management ----------
-      let remainingSeconds = exam.duration * 60; // default full
+      let remainingSeconds = exam.duration * 60; // default full duration
 
       if (isLive) {
         if (navigator.onLine) {
@@ -97,12 +95,10 @@ export const Exam = {
             this.marked = existingAttempt.markedAnswers || new Array(questions.length).fill(false);
             this.startedAt = existingAttempt.startedAt?.toDate() || new Date();
 
-            // Compute remaining time
             const now = new Date();
             const elapsed = Math.floor((now - this.startedAt) / 1000);
             remainingSeconds = Math.max(0, exam.duration * 60 - elapsed);
 
-            // If time already up, auto-submit immediately
             if (remainingSeconds <= 0) {
               Swal.fire('সময় শেষ', 'আপনার পরীক্ষার সময় শেষ হয়ে গেছে।', 'info');
               await this.sub(true, true);
@@ -181,7 +177,7 @@ export const Exam = {
           }));
         }
       } else {
-        // mock/practice – always fresh attempt
+        // mock / practice – always fresh
         this.ans = new Array(questions.length).fill(null);
         this.marked = new Array(questions.length).fill(false);
         this.startedAt = new Date();
@@ -193,7 +189,7 @@ export const Exam = {
       this.d = { ...exam, qs: questionsWithoutCorrect, fullQuestions: questions };
       this.currentPage = 0;
       this.isPractice = forcePractice || exam.type === 'mock';
-      this.inProgress = true;
+      this.inProgress = true;                     // পরীক্ষা চলছে
 
       // Setup mobile review panel toggle
       const reviewBtn = document.getElementById('review-panel-btn');
@@ -412,6 +408,7 @@ export const Exam = {
       <button onclick="Exam.sub()" class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow hover:from-indigo-600 hover:to-indigo-700 transition">জমা দিন</button>
     </div>`;
 
+    // This layout ensures questions scroll independently from the sidebar on desktop
     const layoutHTML = `
       ${headerHTML}
       <div class="flex flex-col md:flex-row" style="height: calc(100vh - 60px);">
