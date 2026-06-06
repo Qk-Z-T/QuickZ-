@@ -3,7 +3,6 @@
 
 import { AppState } from './state.js';
 import { clearListeners, initRealTimeSync } from '../features/realtime-sync/sync.logic.js';
-// ঠিক করা হয়েছে: teacher-core.js থেকে Teacher ইম্পোর্ট করুন
 import { Teacher } from '../teacher-core.js';
 
 const validPages = ['home', 'create', 'rank', 'folders', 'management'];
@@ -66,7 +65,7 @@ export const Router = {
             </div>
             <h2 class="text-xl font-bold dark:text-white">Complete Your Profile</h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Please provide your information to continue</p>
-          </div>
+            </div>
           <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border">
             <div class="mb-4">
               <label class="block text-sm font-bold mb-1 dark:text-white">Full Name</label>
@@ -143,7 +142,7 @@ export const Router = {
       home: () => Teacher.homeView?.(),
       create: () => Teacher.createView?.(),
       rank: () => Teacher.rankView?.(),
-      folders: () => Teacher.foldersView?.(),
+      folders: () => Teacher.foldersView?.(),  // এখানে `foldersView` কল করা হয়েছে
       management: () => Teacher.managementView?.()
     };
     loadPage[page]?.();
