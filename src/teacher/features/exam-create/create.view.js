@@ -198,7 +198,23 @@ export function createView() {
   const type = urlParams.get('type') || 'live';
   
   appContainer.innerHTML = renderCreateForm(type);
-  document.getElementById('floating-math-btn')?.classList.remove('hidden');
+  
+  // Show floating math button
+  const floatingBtn = document.getElementById('floating-math-btn');
+  if (floatingBtn) {
+    floatingBtn.classList.remove('hidden');
+    // Force re-attach event listener by replacing the button
+    const newBtn = floatingBtn.cloneNode(true);
+    floatingBtn.parentNode.replaceChild(newBtn, floatingBtn);
+    // Reinitialize MathEditor
+    if (window.MathEditor && typeof window.MathEditor.init === 'function') {
+      setTimeout(() => {
+        window.MathEditor.init();
+        // Dispatch custom event for math editor
+        document.dispatchEvent(new Event('createViewLoaded'));
+      }, 100);
+    }
+  }
   
   // Load subjects for the selected type
   const folderStructure = window.folderStructure || { live: [], mock: [] };
@@ -207,15 +223,6 @@ export function createView() {
   if (subjectSelect) {
     subjectSelect.innerHTML = `<option value="">Select Subject (Optional)</option>` +
       subjects.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-  }
-
-  // Reinitialize MathEditor
-  if (window.MathEditor && typeof window.MathEditor.init === 'function') {
-    setTimeout(() => {
-      window.MathEditor.init();
-      // Dispatch custom event for math editor
-      document.dispatchEvent(new Event('createViewLoaded'));
-    }, 100);
   }
 }
 
