@@ -20,10 +20,15 @@ export const MathEditor = {
       }
     });
 
-    // Floating math button toggle
+    // Floating math button toggle - using direct event listener
     const floatingMathBtn = document.getElementById('floating-math-btn');
     if (floatingMathBtn) {
-      floatingMathBtn.addEventListener('click', () => {
+      // Remove any existing listeners to avoid duplicates
+      const newBtn = floatingMathBtn.cloneNode(true);
+      floatingMathBtn.parentNode.replaceChild(newBtn, floatingMathBtn);
+      
+      newBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
         const panel = document.getElementById('math-symbols-panel');
         if (panel) {
           panel.classList.toggle('show');
@@ -32,8 +37,14 @@ export const MathEditor = {
           } else {
             panel.classList.remove('fixed-position');
           }
+          console.log('Math panel toggled:', panel.classList.contains('show') ? 'open' : 'closed');
+        } else {
+          console.warn('Math symbols panel not found');
         }
       });
+      console.log('Floating math button listener attached');
+    } else {
+      console.warn('Floating math button not found');
     }
 
     // Preview button clicks - using event delegation
@@ -177,6 +188,13 @@ export const MathEditor = {
       overlay.innerHTML = `<div class="text-red-500 p-2 bengali-text">রেন্ডারিং ত্রুটি</div>`;
     }
   }
+};
+
+// Auto-resize textarea helper
+window.autoResizeTextarea = function(textarea) {
+  if (!textarea) return;
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
 };
 
 // Initialize on DOM ready
