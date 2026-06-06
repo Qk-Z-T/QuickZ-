@@ -5,6 +5,8 @@ let currentFocusedTextarea = null;
 
 export const MathEditor = {
   init() {
+    console.log('MathEditor initializing...');
+    
     // Track focused textarea for questions/options/explanation
     document.addEventListener('focusin', (e) => {
       if (
@@ -14,6 +16,7 @@ export const MathEditor = {
           e.target.id.includes('explanation'))
       ) {
         currentFocusedTextarea = e.target;
+        console.log('Focused textarea:', e.target.id);
       }
     });
 
@@ -22,19 +25,22 @@ export const MathEditor = {
     if (floatingMathBtn) {
       floatingMathBtn.addEventListener('click', () => {
         const panel = document.getElementById('math-symbols-panel');
-        panel.classList.toggle('show');
-        if (panel.classList.contains('show')) {
-          panel.classList.add('fixed-position');
-        } else {
-          panel.classList.remove('fixed-position');
+        if (panel) {
+          panel.classList.toggle('show');
+          if (panel.classList.contains('show')) {
+            panel.classList.add('fixed-position');
+          } else {
+            panel.classList.remove('fixed-position');
+          }
         }
       });
     }
 
-    // Preview button clicks
+    // Preview button clicks - using event delegation
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.math-preview-btn');
       if (!btn) return;
+      
       const textareaId = btn.dataset.target;
       const textarea = document.getElementById(textareaId);
       if (!textarea) return;
@@ -53,7 +59,7 @@ export const MathEditor = {
         overlay.style.display = 'block';
         textarea.classList.add('math-mode');
         btn.innerHTML = '<i class="fas fa-code"></i>';
-        MathEditor.updateMathOverlay(textareaId);
+        this.updateMathOverlay(textareaId);
       } else {
         overlay.style.display = 'none';
         textarea.classList.remove('math-mode');
@@ -61,7 +67,7 @@ export const MathEditor = {
       }
     });
 
-    // Auto-update preview on input
+    // Auto-update preview on input - using event delegation
     document.addEventListener('input', (e) => {
       if (
         e.target.tagName === 'TEXTAREA' &&
@@ -72,10 +78,23 @@ export const MathEditor = {
         const overlayId = 'overlay-' + e.target.id;
         const overlay = document.getElementById(overlayId);
         if (overlay && overlay.style.display !== 'none') {
-          MathEditor.updateMathOverlay(e.target.id);
+          this.updateMathOverlay(e.target.id);
         }
       }
     });
+
+    // Symbol button clicks - using event delegation
+    document.addEventListener('click', (e) => {
+      const symbolBtn = e.target.closest('.symbol-btn');
+      if (symbolBtn) {
+        const symbol = symbolBtn.dataset.symbol;
+        if (symbol) {
+          this.insertAtCursor(symbol);
+        }
+      }
+    });
+
+    console.log('MathEditor initialized successfully');
   },
 
   closePanel() {
@@ -87,7 +106,17 @@ export const MathEditor = {
   },
 
   insertAtCursor(symbol) {
-    if (!currentFocusedTextarea) return;
+    if (!currentFocusedTextarea) {
+      // Try to find any question/option textarea
+      const textareas = document.querySelectorAll('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
+      if (textareas.length > 0) {
+        currentFocusedTextarea = textareas[0];
+      } else {
+        console.warn('No focused textarea found');
+        return;
+      }
+    }
+    
     const textarea = currentFocusedTextarea;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -152,6 +181,12 @@ export const MathEditor = {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+  MathEditor.init();
+});
+
+// Also re-initialize when create view loads
+document.addEventListener('createViewLoaded', () => {
+  console.log('Create view loaded - reinitializing MathEditor');
   MathEditor.init();
 });
 
