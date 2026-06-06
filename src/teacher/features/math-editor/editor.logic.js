@@ -20,10 +20,10 @@ export const MathEditor = {
       }
     });
 
-    // Floating math button toggle - using direct event listener
+    // Floating math button toggle - সরাসরি ইভেন্ট লিসেনার
     const floatingMathBtn = document.getElementById('floating-math-btn');
     if (floatingMathBtn) {
-      // Remove any existing listeners to avoid duplicates
+      // পুরানো লিসেনার সরান
       const newBtn = floatingMathBtn.cloneNode(true);
       floatingMathBtn.parentNode.replaceChild(newBtn, floatingMathBtn);
       
@@ -47,7 +47,7 @@ export const MathEditor = {
       console.warn('Floating math button not found');
     }
 
-    // Preview button clicks - using event delegation
+    // Preview button clicks - ইভেন্ট ডেলিগেশন
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.math-preview-btn');
       if (!btn) return;
@@ -78,7 +78,7 @@ export const MathEditor = {
       }
     });
 
-    // Auto-update preview on input - using event delegation
+    // Auto-update preview on input
     document.addEventListener('input', (e) => {
       if (
         e.target.tagName === 'TEXTAREA' &&
@@ -94,7 +94,7 @@ export const MathEditor = {
       }
     });
 
-    // Symbol button clicks - using event delegation
+    // Symbol button clicks
     document.addEventListener('click', (e) => {
       const symbolBtn = e.target.closest('.symbol-btn');
       if (symbolBtn) {
@@ -118,7 +118,7 @@ export const MathEditor = {
 
   insertAtCursor(symbol) {
     if (!currentFocusedTextarea) {
-      // Try to find any question/option textarea
+      // Fallback: প্রথম টেক্সটারিয়া খুঁজে নিন
       const textareas = document.querySelectorAll('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
       if (textareas.length > 0) {
         currentFocusedTextarea = textareas[0];
@@ -197,16 +197,28 @@ window.autoResizeTextarea = function(textarea) {
   textarea.style.height = textarea.scrollHeight + 'px';
 };
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+// DOM রেডি হওয়ার পর ইনিশিয়ালাইজ করুন
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    MathEditor.init();
+  });
+} else {
+  // DOM ইতিমধ্যে লোড হয়ে গেছে
   MathEditor.init();
-});
+}
 
-// Also re-initialize when create view loads
+// Create view লোড হলে পুনরায় ইনিশিয়ালাইজ করুন
 document.addEventListener('createViewLoaded', () => {
   console.log('Create view loaded - reinitializing MathEditor');
-  MathEditor.init();
+  setTimeout(() => {
+    MathEditor.init();
+  }, 200);
 });
+
+// ম্যানুয়ালি ইনিশিয়ালাইজ করার জন্য একটি ফাংশন
+window.initMathEditor = function() {
+  MathEditor.init();
+};
 
 // Expose globally for inline handlers
 window.MathEditor = MathEditor;
