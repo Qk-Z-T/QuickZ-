@@ -9,9 +9,112 @@ import { DB } from '../../../shared/services/db.service.js';
 import {
   collection, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { renderFolderTree, renderUncategorizedExams, toggleFolder } from './library.view.js';
 
 let folderStructure = window.folderStructure;
 let ExamCache = window.ExamCache;
+
+/**
+ * Main library view - renders the folder tree and uncategorized exams
+ */
+export function foldersView() {
+  if (!AppState.selectedGroup) {
+    Teacher.selectGroupView?.('folders');
+    return;
+  }
+
+  document.getElementById('floating-math-btn')?.classList.add('hidden');
+  document.getElementById('math-symbols-panel')?.classList.remove('show');
+
+  const appContainer = document.getElementById('app-container');
+  appContainer.innerHTML = `
+    <div class="pb-6">
+      <div class="flex items-center gap-3 mb-6">
+        <button onclick="Router.teacher('home')" class="text-xs font-bold text-gray-500 hover:text-indigo-600 flex items-center gap-1 bg-white dark:bg-gray-800 border dark:border-gray-700 px-3 py-2 rounded-lg transition">
+          <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </button>
+        <h2 class="text-2xl font-bold font-en text-gray-800 dark:text-white">Exam Library</h2>
+      </div>
+
+      <!-- Current course info -->
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border dark:border-gray-700 mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600">
+            <i class="fas fa-book"></i>
+          </div>
+          <div>
+            <span class="font-bold dark:text-white">${AppState.selectedGroup.name}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">Course Code: ${AppState.selectedGroup.groupCode || ''}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-6">
+        <button id="tab-live" class="flex-1 py-3 rounded-xl font-bold bg-indigo-600 text-white transition" onclick="Teacher.switchLibraryTab('live')">
+          <i class="fas fa-broadcast-tower mr-2"></i>Live
+        </button>
+        <button id="tab-mock" class="flex-1 py-3 rounded-xl font-bold bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition" onclick="Teacher.switchLibraryTab('mock')">
+          <i class="fas fa-book-reader mr-2"></i>Practice
+        </button>
+        <button id="tab-uncategorized" class="flex-1 py-3 rounded-xl font-bold bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition" onclick="Teacher.switchLibraryTab('uncategorized')">
+          <i class="fas fa-folder-open mr-2"></i>Uncategorized
+        </button>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex gap-2 mb-6">
+        <button onclick="Teacher.createSubject('live')" class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-200 transition">
+          <i class="fas fa-plus mr-1"></i> New Subject
+        </button>
+        <button onclick="Teacher.createSubject('mock')" class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-200 transition">
+          <i class="fas fa-plus mr-1"></i> New Subject
+        </button>
+      </div>
+
+      <!-- Content areas -->
+      <div id="live-section">
+        <h3 class="font-bold text-lg mb-3 dark:text-white">Live Subjects</h3>
+        <div id="live-folder-tree" class="space-y-2"></div>
+      </div>
+      <div id="mock-section" class="hidden">
+        <h3 class="font-bold text-lg mb-3 dark:text-white">Practice Subjects</h3>
+        <div id="mock-folder-tree" class="space-y-2"></div>
+      </div>
+      <div id="uncategorized-section" class="hidden">
+        <h3 class="font-bold text-lg mb-3 dark:text-white">Uncategorized Exams</h3>
+        <div id="uncategorized-exams" class="space-y-2"></div>
+      </div>
+    </div>`;
+
+  // Render initial view (live tab)
+  renderFolderTree();
+  renderUncategorizedExams();
+
+  // Toggle functions are now attached globally via Teacher
+  window.toggleFolder = toggleFolder;
+}
+
+/**
+ * Switch between library tabs
+ */
+export function switchLibraryTab(tab) {
+  document.getElementById('tab-live').className = `flex-1 py-3 rounded-xl font-bold ${tab === 'live' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} transition`;
+  document.getElementById('tab-mock').className = `flex-1 py-3 rounded-xl font-bold ${tab === 'mock' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} transition`;
+  document.getElementById('tab-uncategorized').className = `flex-1 py-3 rounded-xl font-bold ${tab === 'uncategorized' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} transition`;
+
+  document.getElementById('live-section').classList.toggle('hidden', tab !== 'live');
+  document.getElementById('mock-section').classList.toggle('hidden', tab !== 'mock');
+  document.getElementById('uncategorized-section').classList.toggle('hidden', tab !== 'uncategorized');
+
+  // Render content for the selected tab
+  if (tab === 'live' || tab === 'mock') {
+    renderFolderTree();
+  }
+  if (tab === 'uncategorized') {
+    renderUncategorizedExams();
+  }
+}
 
 // ---------- Subject Operations ----------
 Teacher.createSubject = async function (type) {
@@ -47,7 +150,7 @@ Teacher.createSubject = async function (type) {
     });
     folderStructure[type].push(newSubject);
     localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-    Teacher.renderFolderTree();
+    renderFolderTree();
     Swal.fire('Offline', 'Subject saved locally.', 'info');
     return;
   }
@@ -55,7 +158,7 @@ Teacher.createSubject = async function (type) {
   folderStructure[type].push(newSubject);
   await saveFolderStructureToFirebase();
   localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-  Teacher.renderFolderTree();
+  renderFolderTree();
   Swal.fire('Success', 'Subject created successfully', 'success');
 };
 
@@ -96,7 +199,7 @@ Teacher.addChapterToSubject = async function (subjectId, type) {
     });
     subject.children.push(newChapter);
     localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-    Teacher.renderFolderTree();
+    renderFolderTree();
     Swal.fire('Offline', 'Chapter saved locally.', 'info');
     return;
   }
@@ -104,7 +207,7 @@ Teacher.addChapterToSubject = async function (subjectId, type) {
   subject.children.push(newChapter);
   await saveFolderStructureToFirebase();
   localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-  Teacher.renderFolderTree();
+  renderFolderTree();
   Swal.fire('Success', 'Chapter added successfully', 'success');
 };
 
@@ -147,14 +250,14 @@ Teacher.renameItem = async function (itemType, itemId, currentName) {
     });
     localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
     Swal.fire('Offline', 'Name changed locally.', 'info');
-    Teacher.foldersView();
+    foldersView();
     return;
   }
 
   await saveFolderStructureToFirebase();
   localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
   Swal.fire('Success', `${itemType} renamed to ${newName}`, 'success');
-  Teacher.foldersView();
+  foldersView();
 };
 
 // ---------- Delete Subject / Chapter ----------
@@ -181,7 +284,7 @@ Teacher.deleteSubject = async function (subjectId, type) {
     });
     folderStructure[type].splice(idx, 1);
     localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-    Teacher.renderFolderTree();
+    renderFolderTree();
     Swal.fire('Offline', 'Subject deleted locally.', 'info');
     return;
   }
@@ -189,7 +292,7 @@ Teacher.deleteSubject = async function (subjectId, type) {
   folderStructure[type].splice(idx, 1);
   await saveFolderStructureToFirebase();
   localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-  Teacher.renderFolderTree();
+  renderFolderTree();
   Swal.fire('Deleted!', 'Subject and all contents deleted.', 'success');
 };
 
@@ -216,7 +319,7 @@ Teacher.deleteChapter = async function (chapterId, type) {
         });
         subject.children.splice(idx, 1);
         localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-        Teacher.renderFolderTree();
+        renderFolderTree();
         Swal.fire('Offline', 'Chapter deleted locally.', 'info');
         return;
       }
@@ -224,7 +327,7 @@ Teacher.deleteChapter = async function (chapterId, type) {
       subject.children.splice(idx, 1);
       await saveFolderStructureToFirebase();
       localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
-      Teacher.renderFolderTree();
+      renderFolderTree();
       Swal.fire('Deleted!', 'Chapter and all exams deleted.', 'success');
       return;
     }
@@ -263,7 +366,7 @@ Teacher.deleteExam = async function (examId) {
       delete ExamCache[examId];
       localStorage.setItem('offlineFolderStructure_' + AppState.selectedGroup.id, JSON.stringify(folderStructure));
       Swal.fire('Offline', 'Exam deleted locally.', 'info');
-      Teacher.foldersView();
+      foldersView();
       return;
     }
 
@@ -292,7 +395,7 @@ Teacher.deleteExam = async function (examId) {
 
     delete ExamCache[examId];
     Swal.fire('Deleted!', 'Exam deleted from everywhere.', 'success');
-    Teacher.foldersView();
+    foldersView();
   } catch (error) {
     Swal.fire('Error', 'Failed to delete: ' + error.message, 'error');
   }
@@ -352,7 +455,7 @@ Teacher.viewPaper = async function (examId) {
 
   document.getElementById('app-container').innerHTML = `
     <div class="pb-6">
-      <button onclick="Teacher.foldersView()" class="mb-4 text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+      <button onclick="foldersView()" class="mb-4 text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
         <i class="fas fa-arrow-left"></i> Back to Library
       </button>
       ${html}
@@ -420,8 +523,12 @@ Teacher.takeExamNow = async function (examId) {
     });
 
     await Teacher.syncFolderExamData(examId, { isDraft: false, resultPublished: false, cancelled: false, startTime, endTime });
-    Swal.fire('Success', 'Exam is now LIVE', 'success').then(() => Teacher.foldersView());
+    Swal.fire('Success', 'Exam is now LIVE', 'success').then(() => foldersView());
   } catch (e) {
     Swal.fire('Error', e.message, 'error');
   }
 };
+
+// Attach to global Teacher object
+Teacher.foldersView = foldersView;
+Teacher.switchLibraryTab = switchLibraryTab;
