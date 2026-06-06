@@ -229,6 +229,32 @@
             <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\therefore')">∴</button>
         </div>
     </div>
+    <!-- Floating Math Button -->
+<button id="floating-math-btn" class="floating-math-btn hidden">
+  <i class="fas fa-superscript"></i>
+</button>
+
+<!-- Math Symbols Panel -->
+<div id="math-symbols-panel" class="math-symbols-panel">
+  <div class="grid grid-cols-4 gap-2">
+    <button class="symbol-btn" data-symbol="\\frac{}{}">\frac{}{}</button>
+    <button class="symbol-btn" data-symbol="\\sqrt{}">\sqrt{}</button>
+    <button class="symbol-btn" data-symbol="\\sum">\sum</button>
+    <button class="symbol-btn" data-symbol="\\int">\int</button>
+    <button class="symbol-btn" data-symbol="\\lim">\lim</button>
+    <button class="symbol-btn" data-symbol="\\alpha">\alpha</button>
+    <button class="symbol-btn" data-symbol="\\beta">\beta</button>
+    <button class="symbol-btn" data-symbol="\\gamma">\gamma</button>
+    <button class="symbol-btn" data-symbol="\\theta">\theta</button>
+    <button class="symbol-btn" data-symbol="\\pi">\pi</button>
+    <button class="symbol-btn" data-symbol="\\infty">\infty</button>
+    <button class="symbol-btn" data-symbol="\\pm">\pm</button>
+    <button class="symbol-btn" data-symbol="\\times">\times</button>
+    <button class="symbol-btn" data-symbol="\\div">\div</button>
+    <button class="symbol-btn" data-symbol="\\approx">\approx</button>
+    <button class="symbol-btn" data-symbol="\\propto">\propto</button>
+  </div>
+</div>
 
     <!-- Main Application Script -->
     <!-- db.service.js is imported by app.js as a module; the extra script tag removed to prevent syntax error -->
