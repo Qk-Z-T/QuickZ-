@@ -1,12 +1,10 @@
 <!-- src/teacher/features/math-editor/math-panel.html -->
-<!-- Math Symbols Panel -->
 <div id="math-symbols-panel" class="math-symbols-panel">
     <div class="panel-header">
         <span class="panel-title">📐 Math Symbols</span>
         <button class="panel-close" onclick="window.MathEditor.closePanel()">×</button>
     </div>
     <div class="panel-body">
-        <!-- Category Tabs -->
         <div class="category-tabs">
             <button class="cat-tab active" data-cat="basic">Basic</button>
             <button class="cat-tab" data-cat="calc">Calculus</button>
@@ -17,8 +15,6 @@
             <button class="cat-tab" data-cat="matrix">Matrix</button>
             <button class="cat-tab" data-cat="number">Number</button>
         </div>
-
-        <!-- Symbol Grids -->
         <div class="symbol-grid-container">
             <!-- Basic -->
             <div class="symbol-grid" data-cat="basic">
@@ -37,7 +33,6 @@
                 <button class="symbol-btn" data-symbol="\\cbrt{}">∛</button>
                 <button class="symbol-btn" data-symbol="\\sqrt[4]{}">∜</button>
             </div>
-
             <!-- Calculus -->
             <div class="symbol-grid hidden" data-cat="calc">
                 <button class="symbol-btn" data-symbol="\\int">∫</button>
@@ -54,7 +49,6 @@
                 <button class="symbol-btn" data-symbol="dy">dy</button>
                 <button class="symbol-btn" data-symbol="dz">dz</button>
             </div>
-
             <!-- Trigonometry -->
             <div class="symbol-grid hidden" data-cat="trig">
                 <button class="symbol-btn" data-symbol="\\sin">sin</button>
@@ -71,7 +65,6 @@
                 <button class="symbol-btn" data-symbol="\\arctan">arctan</button>
                 <button class="symbol-btn" data-symbol="\\sinh">sinh</button>
             </div>
-
             <!-- Algebra -->
             <div class="symbol-grid hidden" data-cat="algebra">
                 <button class="symbol-btn" data-symbol="^{}">x²</button>
@@ -89,7 +82,6 @@
                 <button class="symbol-btn" data-symbol="\\widetilde{}">~</button>
                 <button class="symbol-btn" data-symbol="\\vec{}">⃗</button>
             </div>
-
             <!-- Geometry -->
             <div class="symbol-grid hidden" data-cat="geometry">
                 <button class="symbol-btn" data-symbol="\\angle">∠</button>
@@ -106,7 +98,6 @@
                 <button class="symbol-btn" data-symbol="\\sim">∼</button>
                 <button class="symbol-btn" data-symbol="\\simeq">≃</button>
             </div>
-
             <!-- Set & Logic -->
             <div class="symbol-grid hidden" data-cat="set">
                 <button class="symbol-btn" data-symbol="\\in">∈</button>
@@ -127,7 +118,6 @@
                 <button class="symbol-btn" data-symbol="\\exists">∃</button>
                 <button class="symbol-btn" data-symbol="\\nexists">∄</button>
             </div>
-
             <!-- Matrix -->
             <div class="symbol-grid hidden" data-cat="matrix">
                 <button class="symbol-btn" data-symbol="\\begin{pmatrix} \\end{pmatrix}">( )</button>
@@ -144,7 +134,6 @@
                 <button class="symbol-btn" data-symbol="\\operatorname{inv}">inv</button>
                 <button class="symbol-btn" data-symbol="\\cdot">·</button>
             </div>
-
             <!-- Number Sets -->
             <div class="symbol-grid hidden" data-cat="number">
                 <button class="symbol-btn" data-symbol="\\mathbb{N}">ℕ</button>
@@ -165,8 +154,3 @@
         </div>
     </div>
 </div>
-
-<!-- Floating Math Button -->
-<button id="floating-math-btn" class="floating-math-btn hidden">
-    <i class="fas fa-superscript"></i>
-</button>
