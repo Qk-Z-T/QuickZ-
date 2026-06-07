@@ -10,6 +10,7 @@ export const MathEditor = {
   init() {
     console.log('Math Editor loading...');
 
+    // Track focused textarea
     document.addEventListener('focusin', (e) => {
       if (e.target.tagName === 'TEXTAREA' &&
         (e.target.id.includes('question') ||
@@ -19,6 +20,7 @@ export const MathEditor = {
       }
     });
 
+    // Preview button click handler
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.math-preview-btn');
       if (!btn) return;
@@ -28,6 +30,7 @@ export const MathEditor = {
       this.togglePreview(textareaId, btn);
     });
 
+    // Live preview update on input
     document.addEventListener('input', (e) => {
       if (e.target.tagName === 'TEXTAREA' &&
         (e.target.id.includes('question') ||
@@ -57,14 +60,14 @@ export const MathEditor = {
       // Hide preview
       overlay.style.display = 'none';
       textarea.classList.remove('math-mode');
-      btn.innerHTML = '<i class="fas fa-eye"></i>'; // চোখ আইকন ফিরিয়ে আনা
+      btn.innerHTML = '<i class="fas fa-eye"></i>';
       textarea.style.color = '';
       textarea.style.webkitTextFillColor = '';
     } else {
       // Show preview
       overlay.style.display = 'block';
       textarea.classList.add('math-mode');
-      btn.innerHTML = '<i class="fas fa-code"></i>'; // কোড আইকন দেখানো
+      btn.innerHTML = '<i class="fas fa-code"></i>';
       textarea.style.color = 'transparent';
       textarea.style.webkitTextFillColor = 'transparent';
       await this.renderPreview(textareaId);
@@ -117,12 +120,13 @@ export const MathEditor = {
       previewDiv.innerHTML = rendered;
       overlay.appendChild(previewDiv);
 
+      // Trigger MathJax
       if (window.MathJax) {
-        await MathJax.typeset([previewDiv]);
+        await MathJax.typesetPromise([previewDiv]);
       }
     } catch (error) {
       console.error('Math rendering error:', error);
-      overlay.innerHTML = `<div class="text-red-500 p-2">Error rendering math</div>`;
+      overlay.innerHTML = `<div class="text-red-500 p-2">Error rendering math: ${error.message}</div>`;
     }
   },
 
