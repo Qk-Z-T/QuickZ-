@@ -1,7 +1,7 @@
-// sw.js - Service Worker
+// sw.js - Service Worker for QuickZ
 const CACHE_NAME = 'quickz-v3';
 
-// ইনস্টল ইভেন্ট - শুধু ক্যাশ ওপেন করুন
+// ইনস্টল ইভেন্ট - শুধু skipWaiting
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
