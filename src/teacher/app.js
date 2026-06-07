@@ -31,7 +31,8 @@ import './features/groups/groups.logic.js';
 import './features/groups/groups.view.js';
 import './features/profile/profile.logic.js';
 import './features/profile/profile.view.js';
-import './features/math-editor/editor.logic.js'; // ✅ এটা থাকা আবশ্যক
+import './features/math-editor/editor.logic.js'; // ✅ Math Editor
+// Math CSS is imported via global.css or teacher/styles.css
 
 // ---------- Globals ----------
 window.AppState = AppState;
