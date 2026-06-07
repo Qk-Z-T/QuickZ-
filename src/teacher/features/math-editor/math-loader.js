@@ -5,21 +5,12 @@ export async function loadMathPanel() {
     try {
         const response = await fetch('../src/teacher/features/math-editor/math-panel.html');
         const html = await response.text();
-        
-        // Parse the HTML and extract the panel and button
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        
         const panel = doc.getElementById('math-symbols-panel');
-        const button = doc.getElementById('floating-math-btn');
-        
         if (panel) {
             document.getElementById('math-panel-container').appendChild(panel);
         }
-        if (button) {
-            document.getElementById('math-button-container').appendChild(button);
-        }
-        
         console.log('Math panel loaded successfully');
     } catch (error) {
         console.error('Failed to load math panel:', error);
