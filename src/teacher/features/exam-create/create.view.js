@@ -7,7 +7,6 @@ export function renderCreateForm(type) {
   const isLive = type === 'live';
   const groupName = AppState.selectedGroup?.name || 'Course';
 
-  // সাবজেক্ট লোড করা
   const folderStructure = window.folderStructure || { live: [], mock: [] };
   const subjects = (folderStructure[type] || []).map(s => s.name);
 
@@ -20,7 +19,6 @@ export function renderCreateForm(type) {
       </div>
       <h2 class="text-xl font-bold mb-4 font-en text-gray-800 dark:text-white">Create ${isLive ? 'Live Exam' : 'Practice Test'}</h2>
 
-      <!-- Course Info -->
       <div class="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border dark:border-gray-700 mb-4 flex items-center gap-3">
         <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600 text-sm">
           <i class="fas fa-book"></i>
@@ -191,7 +189,6 @@ export function createView() {
   
   appContainer.innerHTML = renderCreateForm(type);
   
-  // ম্যাথ বাটন দেখান
   setTimeout(() => {
     if (typeof window.showMathButton === 'function') {
       window.showMathButton();
@@ -204,7 +201,6 @@ export function createView() {
     }
   }, 200);
   
-  // সাবজেক্ট সিলেক্ট লোড করুন
   const folderStructure = window.folderStructure || { live: [], mock: [] };
   const subjects = (folderStructure[type] || []).map(s => s.name);
   const subjectSelect = document.getElementById('nsub');
