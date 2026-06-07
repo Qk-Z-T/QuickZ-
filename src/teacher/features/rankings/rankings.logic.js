@@ -7,7 +7,7 @@ import { Teacher } from '../../teacher-core.js';
 import {
   collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-// ✅ ঠিক করা হয়েছে: loadMathJax dom-helper.js থেকে, MathHelper math-helper.js থেকে
+// ✅ সঠিক ইম্পোর্ট
 import { loadMathJax } from '../../../shared/utils/dom-helper.js';
 import { MathHelper } from '../../../shared/utils/math-helper.js';
 
