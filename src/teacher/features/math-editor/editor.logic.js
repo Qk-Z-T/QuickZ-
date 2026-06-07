@@ -230,12 +230,14 @@ export const MathEditor = {
   }
 };
 
+// Auto resize helper
 window.autoResizeTextarea = function(textarea) {
   if (!textarea) return;
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
 };
 
+// Show math button helper
 window.showMathButton = function() {
   const btn = document.getElementById('floating-math-btn');
   if (btn) {
@@ -244,6 +246,7 @@ window.showMathButton = function() {
   }
 };
 
+// Initialize
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     MathEditor.init();
