@@ -1,50 +1,88 @@
 // src/teacher/features/math-editor/editor.logic.js
-// Math symbol panel, LaTeX insertion, live preview overlays
+// Math Editor - সম্পূর্ণ নতুন সংস্করণ
 
-let currentFocusedTextarea = null;
+console.log('📐 Math Editor Loading...');
 
-export const MathEditor = {
+// গ্লোবাল ম্যাথ এডিটর অবজেক্ট
+window.MathEditor = {
+  currentTextarea: null,
+  panelOpen: false,
+
+  // ইনিশিয়ালাইজেশন
   init() {
-    console.log('MathEditor initializing...');
+    console.log('Math Editor Initializing...');
     
-    // Track focused textarea
+    // টেক্সট এরিয়া ফোকাস ট্র্যাক করা
     document.addEventListener('focusin', (e) => {
-      if (
-        e.target.tagName === 'TEXTAREA' &&
-        (e.target.id.includes('question') ||
-          e.target.id.includes('option') ||
-          e.target.id.includes('explanation'))
-      ) {
-        currentFocusedTextarea = e.target;
+      if (e.target.tagName === 'TEXTAREA' && 
+          (e.target.id.includes('question') || 
+           e.target.id.includes('option') || 
+           e.target.id.includes('explanation'))) {
+        this.currentTextarea = e.target;
       }
     });
 
-    // Floating math button - সরাসরি ইভেন্ট
-    const floatingMathBtn = document.getElementById('floating-math-btn');
-    if (floatingMathBtn) {
-      floatingMathBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const panel = document.getElementById('math-symbols-panel');
-        if (panel) {
-          panel.classList.toggle('show');
-          if (panel.classList.contains('show')) {
-            panel.classList.add('fixed-position');
-          } else {
-            panel.classList.remove('fixed-position');
-          }
-        }
-      });
+    // ফ্লোটিং বাটন সেটআপ
+    this.setupFloatingButton();
+
+    // সিম্বল বাটন সেটআপ
+    this.setupSymbolButtons();
+
+    // প্রিভিউ বাটন সেটআপ
+    this.setupPreviewButtons();
+
+    console.log('✅ Math Editor Ready');
+  },
+
+  // ফ্লোটিং বাটন সেটআপ
+  setupFloatingButton() {
+    const btn = document.getElementById('floating-math-btn');
+    if (!btn) {
+      console.warn('⚠️ Floating math button not found in DOM');
+      return;
     }
 
-    // Preview button - ইভেন্ট ডেলিগেশন
+    // পুরনো ইভেন্ট সরান (ক্লোন করে প্রতিস্থাপন)
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+
+    newBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const panel = document.getElementById('math-symbols-panel');
+      if (panel) {
+        panel.classList.toggle('show');
+        this.panelOpen = panel.classList.contains('show');
+        console.log('Panel toggled:', this.panelOpen ? 'open' : 'closed');
+      }
+    });
+    console.log('✅ Floating button ready');
+  },
+
+  // সিম্বল বাটন সেটআপ
+  setupSymbolButtons() {
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.math-preview-btn');
-      if (!btn) return;
-      
-      const textareaId = btn.dataset.target;
+      const symbolBtn = e.target.closest('.symbol-btn');
+      if (!symbolBtn) return;
+
+      const symbol = symbolBtn.dataset.symbol;
+      if (symbol) {
+        this.insertAtCursor(symbol);
+      }
+    });
+    console.log('✅ Symbol buttons ready');
+  },
+
+  // প্রিভিউ বাটন সেটআপ
+  setupPreviewButtons() {
+    document.addEventListener('click', (e) => {
+      const previewBtn = e.target.closest('.math-preview-btn');
+      if (!previewBtn) return;
+
+      const textareaId = previewBtn.dataset.target;
       const textarea = document.getElementById(textareaId);
       if (!textarea) return;
 
+      // ওভারলে তৈরি বা টগল
       let overlay = document.getElementById('overlay-' + textareaId);
       if (!overlay) {
         overlay = document.createElement('div');
@@ -58,146 +96,126 @@ export const MathEditor = {
       if (overlay.style.display === 'none') {
         overlay.style.display = 'block';
         textarea.classList.add('math-mode');
-        btn.innerHTML = '<i class="fas fa-code"></i>';
-        this.updateMathOverlay(textareaId);
+        previewBtn.innerHTML = '<i class="fas fa-code"></i>';
+        this.updatePreview(textareaId);
       } else {
         overlay.style.display = 'none';
         textarea.classList.remove('math-mode');
-        btn.innerHTML = '<i class="fas fa-eye"></i>';
+        previewBtn.innerHTML = '<i class="fas fa-eye"></i>';
       }
     });
-
-    // Auto-update preview
-    document.addEventListener('input', (e) => {
-      if (
-        e.target.tagName === 'TEXTAREA' &&
-        (e.target.id.includes('question') ||
-          e.target.id.includes('option') ||
-          e.target.id.includes('explanation'))
-      ) {
-        const overlayId = 'overlay-' + e.target.id;
-        const overlay = document.getElementById(overlayId);
-        if (overlay && overlay.style.display !== 'none') {
-          this.updateMathOverlay(e.target.id);
-        }
-      }
-    });
-
-    // Symbol button
-    document.addEventListener('click', (e) => {
-      const symbolBtn = e.target.closest('.symbol-btn');
-      if (symbolBtn) {
-        const symbol = symbolBtn.dataset.symbol;
-        if (symbol) {
-          this.insertAtCursor(symbol);
-        }
-      }
-    });
-
-    console.log('MathEditor initialized successfully');
+    console.log('✅ Preview buttons ready');
   },
 
-  closePanel() {
-    const panel = document.getElementById('math-symbols-panel');
-    if (panel) {
-      panel.classList.remove('show');
-      panel.classList.remove('fixed-position');
-    }
-  },
-
+  // কার্সরে সিম্বল বসানো
   insertAtCursor(symbol) {
-    if (!currentFocusedTextarea) {
-      // Fallback
-      const textareas = document.querySelectorAll('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
-      if (textareas.length > 0) {
-        currentFocusedTextarea = textareas[0];
+    if (!this.currentTextarea) {
+      // ফোকাসড টেক্সট এরিয়া না থাকলে প্রথমটি সিলেক্ট করুন
+      const textarea = document.querySelector('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
+      if (textarea) {
+        this.currentTextarea = textarea;
+        this.currentTextarea.focus();
       } else {
+        alert('Please click inside a question or option field first');
         return;
       }
     }
-    
-    const textarea = currentFocusedTextarea;
+
+    const textarea = this.currentTextarea;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const before = text.substring(0, start);
-    const after = text.substring(end);
-    
-    let cursorPos = before.length + symbol.length;
+    const value = textarea.value;
+
+    let cursorPos = start + symbol.length;
     if (symbol.includes('{}')) {
-      cursorPos = before.length + symbol.indexOf('{}') + 1;
+      cursorPos = start + symbol.indexOf('{}') + 1;
     }
-    
-    textarea.value = before + symbol + after;
+
+    textarea.value = value.substring(0, start) + symbol + value.substring(end);
     textarea.selectionStart = cursorPos;
     textarea.selectionEnd = cursorPos;
     textarea.dispatchEvent(new Event('input'));
     textarea.focus();
-    this.closePanel();
-    
-    const overlayId = 'overlay-' + textarea.id;
-    const overlay = document.getElementById(overlayId);
-    if (overlay && overlay.style.display !== 'none') {
-      this.updateMathOverlay(textarea.id);
+
+    // প্যানেল বন্ধ করুন
+    const panel = document.getElementById('math-symbols-panel');
+    if (panel) {
+      panel.classList.remove('show');
+      this.panelOpen = false;
     }
+
+    console.log('Symbol inserted:', symbol);
   },
 
-  updateMathOverlay(textareaId) {
+  // প্রিভিউ আপডেট করা
+  updatePreview(textareaId) {
     const textarea = document.getElementById(textareaId);
     const overlay = document.getElementById('overlay-' + textareaId);
     if (!textarea || !overlay) return;
-    
+
     const content = textarea.value;
     overlay.innerHTML = '';
-    
+
     if (!content.trim()) {
-      overlay.innerHTML = '<div class="text-center text-gray-400 p-4 bengali-text">কোনো কন্টেন্ট নেই</div>';
+      overlay.innerHTML = '<div class="text-center text-gray-400 p-4">No content to preview</div>';
       return;
     }
-    
-    const previewContent = document.createElement('div');
-    previewContent.className = 'math-render bengali-text';
-    
-    let processedContent = content;
+
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'math-render bengali-text';
+
+    let processed = content;
     const hasLatex = /\\[a-zA-Z]|\\[\[\]\(\)]|\^|_|\\frac|\\sqrt|\\sum|\\int|\\lim/.test(content);
     const isWrapped = /\\\(.*\\\)|\\\[.*\\\]/.test(content);
     if (hasLatex && !isWrapped) {
-      processedContent = `\\(${content}\\)`;
+      processed = `\\(${content}\\)`;
     }
-    
-    previewContent.innerHTML = processedContent;
-    overlay.appendChild(previewContent);
-    
-    try {
-      if (window.MathJax) {
-        MathJax.typeset([previewContent]);
+
+    previewDiv.innerHTML = processed;
+    overlay.appendChild(previewDiv);
+
+    // MathJax রেন্ডার
+    if (window.MathJax) {
+      try {
+        MathJax.typeset([previewDiv]);
+      } catch (e) {
+        console.warn('MathJax error:', e);
       }
-    } catch (error) {
-      overlay.innerHTML = `<div class="text-red-500 p-2 bengali-text">রেন্ডারিং ত্রুটি</div>`;
+    }
+  },
+
+  // প্যানেল বন্ধ করা
+  closePanel() {
+    const panel = document.getElementById('math-symbols-panel');
+    if (panel) {
+      panel.classList.remove('show');
+      this.panelOpen = false;
     }
   }
 };
 
+// DOM রেডি হওয়ার পর ইনিশিয়ালাইজ
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.MathEditor.init();
+  });
+} else {
+  window.MathEditor.init();
+}
+
+// অটো রিসাইজ টেক্সটএরিয়া
 window.autoResizeTextarea = function(textarea) {
   if (!textarea) return;
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
 };
 
-// DOM রেডি হওয়ার পর ইনিশিয়ালাইজ
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    MathEditor.init();
-  });
-} else {
-  MathEditor.init();
-}
-
-// Re-initialize on create view load
-document.addEventListener('createViewLoaded', () => {
-  setTimeout(() => {
-    MathEditor.init();
-  }, 200);
-});
-
-window.MathEditor = MathEditor;
+// শো ম্যাথ বাটন (ক্রিয়েট ভিউ থেকে কল হবে)
+window.showMathButton = function() {
+  const btn = document.getElementById('floating-math-btn');
+  if (btn) {
+    btn.classList.remove('hidden');
+    btn.style.display = 'flex';
+    console.log('✅ Math button shown');
+  }
+};
