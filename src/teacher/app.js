@@ -1,5 +1,5 @@
 // src/teacher/app.js
-// Teacher portal entry point (fixed – DashboardLogic imported)
+// Teacher portal entry point
 
 import { AppState } from './core/state.js';
 import { Auth, AuthUI } from './core/auth.js';
@@ -16,7 +16,7 @@ Teacher.generatePermissionKeyFromHome = DashboardLogic.generatePermissionKeyFrom
 Teacher.quickEditJoinMethod = DashboardLogic.quickEditJoinMethod;
 Teacher.copyPermissionKey = DashboardLogic.copyPermissionKey;
 
-// Feature modules (attach their own methods to Teacher)
+// Feature modules
 import './features/exam-create/create.logic.js';
 import './features/exam-create/create.view.js';
 import './features/library/library.logic.js';
@@ -31,7 +31,7 @@ import './features/groups/groups.logic.js';
 import './features/groups/groups.view.js';
 import './features/profile/profile.logic.js';
 import './features/profile/profile.view.js';
-import './features/math-editor/editor.logic.js';  // ✅ Ensure this is imported
+import './features/math-editor/editor.logic.js'; // ✅ এটা থাকা আবশ্যক
 
 // ---------- Globals ----------
 window.AppState = AppState;
@@ -68,14 +68,11 @@ if (cachedTeacherData && !isExplicitLogout) {
     const parsed = JSON.parse(cachedTeacherData);
     AppState.currentUser = parsed;
     AppState.user = { uid: parsed.id || parsed.uid };
-
     hideSplash();
-    // Only init if we have a valid user
     if (AppState.currentUser && (AppState.currentUser.id || AppState.currentUser.uid)) {
       initRealTimeSync();
       Router.initTeacher();
     } else {
-      // Invalid cached data, clear it
       localStorage.removeItem('teacher_data');
     }
   } catch (e) {
@@ -95,15 +92,11 @@ const fallbackTimer = setTimeout(() => {
 
 onAuthStateChanged(auth, async (user) => {
   clearTimeout(fallbackTimer);
-
   if (user) {
     localStorage.setItem('explicit_logout', 'false');
     AppState.user = user;
-
-    // Try to load teacher profile
     if (!AppState.currentUser || AppState.currentUser.id !== user.uid) {
       try {
-        // First check localStorage
         const cached = localStorage.getItem('teacher_data');
         let teacherCached = null;
         if (cached) {
@@ -115,14 +108,11 @@ onAuthStateChanged(auth, async (user) => {
             }
           } catch(e) {}
         }
-
-        // If online and no valid cache, try Firestore (will create if missing)
         if (navigator.onLine && !teacherCached) {
           try {
             await Auth.loadTeacherProfile(user.uid);
           } catch (e) {
             console.warn('Firestore teacher profile load failed:', e.message);
-            // If cached exists but id mismatched, try to find by uid
             if (cached && !teacherCached) {
               try {
                 const parsed = JSON.parse(cached);
@@ -139,14 +129,11 @@ onAuthStateChanged(auth, async (user) => {
         console.error('Profile load error:', e);
       }
     }
-
-    // If we have a teacher user, init portal
     if (AppState.currentUser && (AppState.currentUser.id || AppState.currentUser.uid)) {
       initRealTimeSync();
       Router.initTeacher();
       hideSplash();
     } else {
-      // No teacher user, show login
       Router.showLogin();
       hideSplash();
     }
@@ -167,12 +154,12 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ---------- Offline sync ----------
+// Offline sync
 window.addEventListener('load', () => {
   OfflineSync.init();
 });
 
-// ---------- Global click handlers ----------
+// Global click handlers
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.three-dot-menu') && !e.target.closest('.dot-menu-dropdown')) {
     document.querySelectorAll('.dot-menu-dropdown').forEach(d => d.classList.remove('show'));
@@ -190,7 +177,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ---------- Helper: hide splash ----------
 function hideSplash() {
   const splash = document.getElementById('splash-screen');
   if (splash && !splash.classList.contains('splash-hidden')) {
