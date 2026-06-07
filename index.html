@@ -1,303 +1,586 @@
 <!DOCTYPE html>
-<html lang="bn" class="light">
+<html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <title>QuickZ · শিক্ষক ও শিক্ষার্থী পোর্টাল</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="QuickZ">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="icon" type="image/png" href="icon-192.png">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickZ | Teacher Panel</title>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: { extend: {} }
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            primary: '#1a1f2e',
+                            secondary: '#242938',
+                            tertiary: '#2d3347'
+                        }
+                    }
+                }
+            }
         }
     </script>
+
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="css/style.css">
-    
-    <!-- অফলাইন সাপোর্ট ও সিঙ্ক ব্যবস্থার জন্য db.js -->
-    <script src="js/db.js" defer></script>
+
+    <!-- Google Fonts (Bengali + English) -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- SweetAlert2 & Moment.js -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+    <!-- MathJax configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                packages: ['base', 'ams', 'noerrors', 'noundefined']
+            },
+            svg: { fontCache: 'global' },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+    <!-- Shared CSS -->
+    <link rel="stylesheet" href="../src/shared/styles/global.css">
+    <link rel="stylesheet" href="../src/shared/styles/animations.css">
+    <link rel="stylesheet" href="../src/teacher/styles.css">
+
+    <style>
+        /* Fallback for layout (Tailwind compatible) */
+        .sidebar {
+            width: 240px; min-height: 100vh; background: white; border-right: 1px solid #e2e8f0;
+            position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .dark .sidebar, .theme-dark .sidebar { background: #111111; border-right-color: #333333; }
+        .sidebar-logo { padding: 18px 16px 14px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; }
+        .sidebar-nav { flex: 1; padding: 10px 8px; overflow-y: auto; }
+        .sidebar-nav-item {
+            display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
+            cursor: pointer; transition: all 0.2s; color: #64748b; font-weight: 600; font-size: 13.5px; margin-bottom: 3px;
+        }
+        .sidebar-nav-item:hover { background: #f8fafc; color: #4f46e5; }
+        .dark .sidebar-nav-item:hover { background: #222222; color: #818cf8; }
+        .sidebar-nav-item.active { background: #eef2ff; color: #4f46e5; }
+        .dark .sidebar-nav-item.active { background: #1e1b4b; color: #818cf8; }
+        .sidebar-bottom { padding: 10px 8px; border-top: 1px solid #e2e8f0; }
+        .main-content-area { margin-left: 240px; flex: 1; min-height: 100vh; background: #f8fafc; }
+        .dark .main-content-area { background: #0a0a0a; }
+        .top-bar {
+            position: sticky; top: 0; z-index: 50; background: white; border-bottom: 1px solid #e2e8f0;
+            padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .dark .top-bar { background: #111111; border-bottom-color: #333333; }
+        .page-content { flex: 1; padding: 28px; }
+
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.mobile-open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.2); }
+            .main-content-area { margin-left: 0; }
+            .mobile-menu-btn { display: flex !important; }
+            .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+            .mobile-overlay.show { display: block; }
+        }
+        @media (min-width: 901px) {
+            .mobile-menu-btn { display: none !important; }
+        }
+
+        /* Math Preview Overlay Styles */
+        .math-preview-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 12px;
+            overflow: auto;
+            background: #ffffff;
+            z-index: 10;
+            border-radius: 8px;
+            box-sizing: border-box;
+            pointer-events: none;
+            display: none;
+        }
+        .dark .math-preview-overlay {
+            background: #111111;
+        }
+        .math-preview-overlay.active {
+            display: block;
+        }
+        textarea.math-mode {
+            color: transparent !important;
+            caret-color: black;
+        }
+        .dark textarea.math-mode {
+            caret-color: white;
+        }
+        .math-preview-content {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* Math Panel Styles */
+        .math-symbols-panel {
+            position: fixed;
+            top: 140px;
+            right: 30px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            padding: 0;
+            z-index: 1000;
+            width: 380px;
+            max-height: 500px;
+            display: none !important;
+            overflow: hidden;
+        }
+        .math-symbols-panel.show {
+            display: flex !important;
+            flex-direction: column;
+        }
+        .dark .math-symbols-panel {
+            background: #111;
+            border-color: #333;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .dark .panel-header {
+            background: #1a1a1a;
+            border-bottom-color: #333;
+        }
+        .panel-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: #1e293b;
+        }
+        .dark .panel-title {
+            color: #e2e8f0;
+        }
+        .panel-close {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 0 4px;
+        }
+        .panel-close:hover {
+            color: #ef4444;
+        }
+
+        .panel-body {
+            padding: 12px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .category-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .dark .category-tabs {
+            border-bottom-color: #333;
+        }
+        .cat-tab {
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .dark .cat-tab {
+            border-color: #333;
+            color: #94a3b8;
+        }
+        .cat-tab:hover {
+            background: #f1f5f9;
+        }
+        .dark .cat-tab:hover {
+            background: #222;
+        }
+        .cat-tab.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        .dark .cat-tab.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+
+        .symbol-grid-container {
+            position: relative;
+        }
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+        .symbol-grid.hidden {
+            display: none;
+        }
+
+        .symbol-btn {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.2s;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', monospace;
+        }
+        .dark .symbol-btn {
+            background: #222;
+            border-color: #333;
+            color: #e2e8f0;
+        }
+        .symbol-btn:hover {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+        .dark .symbol-btn:hover {
+            background: #333;
+        }
+
+        /* Floating math button */
+        .floating-math-btn {
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+        .floating-math-btn:hover {
+            background: #4338ca;
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+        .floating-math-btn.hidden {
+            display: none !important;
+        }
+    </style>
 </head>
-<body class="text-slate-700 dark:text-slate-300">
+<body class="text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-black">
 
-<div id="theme-overlay" class="fixed inset-0 z-[9999] hidden pointer-events-none" style="background-color: #0f172a;"></div>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen" style="background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);">
+        <div class="splash-logo">
+            <span class="text-white">Quick</span><span class="text-emerald-500">Z</span>
+        </div>
+        <div class="splash-subtitle" style="color:#94a3b8;">The ultimate exam platform</div>
+        <div class="splash-loader" style="border-color: rgba(255,255,255,0.1); border-top-color: #10b981;"></div>
+    </div>
 
-<div class="w-full max-w-6xl mx-auto relative pt-4 px-4 sm:px-6">
-    
-    <!-- থিম টগল বাটন -->
-    <button id="theme-toggle" class="absolute top-4 right-4 p-3 w-12 h-12 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-amber-400 hover:scale-105 transition-all z-50">
-        <i class="fas fa-moon text-xl" id="theme-icon"></i>
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="fixed inset-0 z-50 hidden flex" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
+        <div class="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%);">
+            <div style="text-align:center;color:white;">
+                <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 24px;">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <h1 style="font-family:'Outfit',sans-serif;font-weight:800;font-size:42px;">Quick<span style="color:#a5f3fc;">Z</span></h1>
+                <p style="font-size:16px;opacity:0.85;margin-bottom:32px;">The Ultimate Exam Platform</p>
+            </div>
+        </div>
+        <div class="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 lg:p-12">
+            <div style="width:100%;max-width:380px;">
+                <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:36px;">
+                    <h2 style="color:white;font-weight:700;font-size:22px;margin-bottom:4px;font-family:'Outfit',sans-serif;">Teacher Login</h2>
+                    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:28px;">Sign in to your teacher account</p>
+                    <div style="display:flex;flex-direction:column;gap:14px;">
+                        <div>
+                            <input type="email" id="t-email" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;outline:none;color:white;font-size:14px;" placeholder="teacher@example.com">
+                        </div>
+                        <div>
+                            <div style="position:relative;">
+                                <input type="password" id="t-pass" style="width:100%;padding:12px 44px 12px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;outline:none;color:white;font-size:14px;" placeholder="••••••••">
+                                <i class="fas fa-eye" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);cursor:pointer;font-size:14px;" onclick="AuthUI.togglePass('t-pass', this)"></i>
+                            </div>
+                        </div>
+                        <button onclick="Auth.teacherLogin()" id="teacher-login-btn" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;">
+                            Sign In
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="mobile-overlay" onclick="Teacher.closeMobileSidebar()"></div>
+
+    <!-- Website Layout Wrapper -->
+    <div id="website-layout" class="hidden" style="min-height:100vh;">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="main-sidebar">
+            <div class="sidebar-logo">
+                <div style="width:36px;height:36px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:15px;"><i class="fas fa-chalkboard-teacher"></i></div>
+                <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:19px;color:#1e293b;" class="dark:text-white">Quick<span style="color:#10b981">Z</span></span>
+            </div>
+
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;">Active Course</div>
+                <div class="group-switcher relative" id="group-switcher-container">
+                    <button class="group-switcher-btn w-full flex items-center justify-between px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold" onclick="Teacher.toggleGroupSwitcher()">
+                        <span class="flex items-center gap-2"><i class="fas fa-book text-xs"></i><span id="current-group-name" class="truncate max-w-[130px]">Select Course</span></span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="group-switcher-dropdown absolute top-full left-0 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto hidden" id="group-switcher-dropdown"></div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-nav-item nav-item" id="nav-home" onclick="Router.teacher('home')"><i class="fas fa-home"></i><span>Homepage</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-create" onclick="Router.teacher('create')"><i class="fas fa-plus-circle"></i><span>Create Exam</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-rank" onclick="Router.teacher('rank')"><i class="fas fa-trophy"></i><span>Rankings</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-folders" onclick="Router.teacher('folders')"><i class="fas fa-book-open"></i><span>Library</span></div>
+                <div class="sidebar-nav-item nav-item" id="nav-management" onclick="Router.teacher('management')"><i class="fas fa-tasks"></i><span>Management</span></div>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="sidebar-nav-item" onclick="Teacher.viewProfile()"><i class="fas fa-user"></i><span>My Profile</span></div>
+                <div class="sidebar-nav-item" onclick="Teacher.changePassword()"><i class="fas fa-key"></i><span>Change Password</span></div>
+                <div class="sidebar-nav-item" style="color:#ef4444;" onclick="Auth.confirmLogout()"><i class="fas fa-power-off"></i><span>Logout</span></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content-area">
+            <div class="top-bar" id="teacher-header">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button class="mobile-menu-btn" style="background:transparent;border:none;font-size:20px;color:#64748b;cursor:pointer;padding:4px;" onclick="Teacher.toggleMobileSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="top-bar-title" id="page-title">Teacher <span style="color:#4f46e5">Panel</span></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="top-bar-user-name" class="text-xs text-gray-500 dark:text-gray-400 bengali-text"></span>
+                    <div onclick="Teacher.viewProfile()" class="cursor-pointer w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm shadow"><i class="fas fa-user-tie"></i></div>
+                </div>
+            </div>
+            <main id="app-container" class="page-content hidden"></main>
+        </div>
+    </div>
+
+    <!-- Math Symbols Panel (বর্ধিত, ক্যাটাগরি সহ) -->
+    <div id="math-symbols-panel" class="math-symbols-panel">
+        <div class="panel-header">
+            <span class="panel-title">📐 Math Symbols</span>
+            <button class="panel-close" onclick="window.MathEditor.closePanel()">×</button>
+        </div>
+        <div class="panel-body">
+            <!-- ক্যাটাগরি ট্যাব -->
+            <div class="category-tabs">
+                <button class="cat-tab active" data-cat="basic">Basic</button>
+                <button class="cat-tab" data-cat="calc">Calculus</button>
+                <button class="cat-tab" data-cat="trig">Trig</button>
+                <button class="cat-tab" data-cat="algebra">Algebra</button>
+                <button class="cat-tab" data-cat="geometry">Geometry</button>
+                <button class="cat-tab" data-cat="set">Set & Logic</button>
+                <button class="cat-tab" data-cat="matrix">Matrix</button>
+                <button class="cat-tab" data-cat="number">Number</button>
+            </div>
+
+            <!-- সিম্বল গ্রিড -->
+            <div class="symbol-grid-container">
+                <!-- Basic -->
+                <div class="symbol-grid" data-cat="basic">
+                    <button class="symbol-btn" data-symbol="+">+</button>
+                    <button class="symbol-btn" data-symbol="-">-</button>
+                    <button class="symbol-btn" data-symbol="\\times">×</button>
+                    <button class="symbol-btn" data-symbol="\\div">÷</button>
+                    <button class="symbol-btn" data-symbol="=">=</button>
+                    <button class="symbol-btn" data-symbol="\\neq">≠</button>
+                    <button class="symbol-btn" data-symbol="\\pm">±</button>
+                    <button class="symbol-btn" data-symbol="\\mp">∓</button>
+                    <button class="symbol-btn" data-symbol="\\approx">≈</button>
+                    <button class="symbol-btn" data-symbol="\\propto">∝</button>
+                    <button class="symbol-btn" data-symbol="\\infty">∞</button>
+                    <button class="symbol-btn" data-symbol="\\sqrt{}">√</button>
+                    <button class="symbol-btn" data-symbol="\\cbrt{}">∛</button>
+                    <button class="symbol-btn" data-symbol="\\sqrt[4]{}">∜</button>
+                </div>
+
+                <!-- Calculus -->
+                <div class="symbol-grid hidden" data-cat="calc">
+                    <button class="symbol-btn" data-symbol="\\int">∫</button>
+                    <button class="symbol-btn" data-symbol="\\iint">∬</button>
+                    <button class="symbol-btn" data-symbol="\\iiint">∭</button>
+                    <button class="symbol-btn" data-symbol="\\sum">∑</button>
+                    <button class="symbol-btn" data-symbol="\\prod">∏</button>
+                    <button class="symbol-btn" data-symbol="\\lim_{}">lim</button>
+                    <button class="symbol-btn" data-symbol="\\partial">∂</button>
+                    <button class="symbol-btn" data-symbol="\\nabla">∇</button>
+                    <button class="symbol-btn" data-symbol="\\Delta">Δ</button>
+                    <button class="symbol-btn" data-symbol="\\frac{d}{dx}">d/dx</button>
+                    <button class="symbol-btn" data-symbol="dx">dx</button>
+                    <button class="symbol-btn" data-symbol="dy">dy</button>
+                    <button class="symbol-btn" data-symbol="dz">dz</button>
+                </div>
+
+                <!-- Trigonometry -->
+                <div class="symbol-grid hidden" data-cat="trig">
+                    <button class="symbol-btn" data-symbol="\\sin">sin</button>
+                    <button class="symbol-btn" data-symbol="\\cos">cos</button>
+                    <button class="symbol-btn" data-symbol="\\tan">tan</button>
+                    <button class="symbol-btn" data-symbol="\\cot">cot</button>
+                    <button class="symbol-btn" data-symbol="\\sec">sec</button>
+                    <button class="symbol-btn" data-symbol="\\csc">csc</button>
+                    <button class="symbol-btn" data-symbol="\\theta">θ</button>
+                    <button class="symbol-btn" data-symbol="\\phi">φ</button>
+                    <button class="symbol-btn" data-symbol="\\pi">π</button>
+                    <button class="symbol-btn" data-symbol="\\arcsin">arcsin</button>
+                    <button class="symbol-btn" data-symbol="\\arccos">arccos</button>
+                    <button class="symbol-btn" data-symbol="\\arctan">arctan</button>
+                    <button class="symbol-btn" data-symbol="\\sinh">sinh</button>
+                </div>
+
+                <!-- Algebra -->
+                <div class="symbol-grid hidden" data-cat="algebra">
+                    <button class="symbol-btn" data-symbol="^{}">x²</button>
+                    <button class="symbol-btn" data-symbol="_{}">x₁</button>
+                    <button class="symbol-btn" data-symbol="\\frac{}{}">½</button>
+                    <button class="symbol-btn" data-symbol="\\binom{}{}">C</button>
+                    <button class="symbol-btn" data-symbol="\\sqrt{}">√</button>
+                    <button class="symbol-btn" data-symbol="\\sqrt[3]{}">∛</button>
+                    <button class="symbol-btn" data-symbol="\\sqrt[4]{}">∜</button>
+                    <button class="symbol-btn" data-symbol="\\overrightarrow{}">→</button>
+                    <button class="symbol-btn" data-symbol="\\overleftarrow{}">←</button>
+                    <button class="symbol-btn" data-symbol="\\overline{}">¯</button>
+                    <button class="symbol-btn" data-symbol="\\underline{}">_</button>
+                    <button class="symbol-btn" data-symbol="\\widehat{}">^</button>
+                    <button class="symbol-btn" data-symbol="\\widetilde{}">~</button>
+                    <button class="symbol-btn" data-symbol="\\vec{}">⃗</button>
+                </div>
+
+                <!-- Geometry -->
+                <div class="symbol-grid hidden" data-cat="geometry">
+                    <button class="symbol-btn" data-symbol="\\angle">∠</button>
+                    <button class="symbol-btn" data-symbol="\\measuredangle">∡</button>
+                    <button class="symbol-btn" data-symbol="\\sphericalangle">∢</button>
+                    <button class="symbol-btn" data-symbol="\\perp">⊥</button>
+                    <button class="symbol-btn" data-symbol="\\parallel">∥</button>
+                    <button class="symbol-btn" data-symbol="\\nparallel">∦</button>
+                    <button class="symbol-btn" data-symbol="\\triangle">△</button>
+                    <button class="symbol-btn" data-symbol="\\square">□</button>
+                    <button class="symbol-btn" data-symbol="\\circle">○</button>
+                    <button class="symbol-btn" data-symbol="\\diamond">◇</button>
+                    <button class="symbol-btn" data-symbol="\\cong">≅</button>
+                    <button class="symbol-btn" data-symbol="\\sim">∼</button>
+                    <button class="symbol-btn" data-symbol="\\simeq">≃</button>
+                </div>
+
+                <!-- Set & Logic -->
+                <div class="symbol-grid hidden" data-cat="set">
+                    <button class="symbol-btn" data-symbol="\\in">∈</button>
+                    <button class="symbol-btn" data-symbol="\\notin">∉</button>
+                    <button class="symbol-btn" data-symbol="\\subseteq">⊆</button>
+                    <button class="symbol-btn" data-symbol="\\subset">⊂</button>
+                    <button class="symbol-btn" data-symbol="\\supseteq">⊇</button>
+                    <button class="symbol-btn" data-symbol="\\supset">⊃</button>
+                    <button class="symbol-btn" data-symbol="\\cap">∩</button>
+                    <button class="symbol-btn" data-symbol="\\cup">∪</button>
+                    <button class="symbol-btn" data-symbol="\\emptyset">∅</button>
+                    <button class="symbol-btn" data-symbol="\\wedge">∧</button>
+                    <button class="symbol-btn" data-symbol="\\vee">∨</button>
+                    <button class="symbol-btn" data-symbol="\\neg">¬</button>
+                    <button class="symbol-btn" data-symbol="\\Rightarrow">⇒</button>
+                    <button class="symbol-btn" data-symbol="\\Leftrightarrow">⇔</button>
+                    <button class="symbol-btn" data-symbol="\\forall">∀</button>
+                    <button class="symbol-btn" data-symbol="\\exists">∃</button>
+                    <button class="symbol-btn" data-symbol="\\nexists">∄</button>
+                </div>
+
+                <!-- Matrix -->
+                <div class="symbol-grid hidden" data-cat="matrix">
+                    <button class="symbol-btn" data-symbol="\\begin{pmatrix} \\end{pmatrix}">( )</button>
+                    <button class="symbol-btn" data-symbol="\\begin{bmatrix} \\end{bmatrix}">[ ]</button>
+                    <button class="symbol-btn" data-symbol="\\begin{Bmatrix} \\end{Bmatrix}">{ }</button>
+                    <button class="symbol-btn" data-symbol="\\begin{vmatrix} \\end{vmatrix}">| |</button>
+                    <button class="symbol-btn" data-symbol="\\begin{Vmatrix} \\end{Vmatrix}">‖ ‖</button>
+                    <button class="symbol-btn" data-symbol="\\det">det</button>
+                    <button class="symbol-btn" data-symbol="\\tr">tr</button>
+                    <button class="symbol-btn" data-symbol="\\operatorname{rank}">rank</button>
+                    <button class="symbol-btn" data-symbol="\\operatorname{null}">null</button>
+                    <button class="symbol-btn" data-symbol="\\operatorname{diag}">diag</button>
+                    <button class="symbol-btn" data-symbol="\\operatorname{adj}">adj</button>
+                    <button class="symbol-btn" data-symbol="\\operatorname{inv}">inv</button>
+                    <button class="symbol-btn" data-symbol="\\cdot">·</button>
+                </div>
+
+                <!-- Number Sets -->
+                <div class="symbol-grid hidden" data-cat="number">
+                    <button class="symbol-btn" data-symbol="\\mathbb{N}">ℕ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{Z}">ℤ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{Q}">ℚ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{R}">ℝ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{C}">ℂ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{H}">ℍ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{O}">𝕆</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{P}">ℙ</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{F}">𝔽</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{A}">𝔸</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{B}">𝔹</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{D}">𝔻</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{E}">𝔼</button>
+                    <button class="symbol-btn" data-symbol="\\mathbb{G}">𝔾</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Math Button -->
+    <button id="floating-math-btn" class="floating-math-btn hidden">
+        <i class="fas fa-superscript"></i>
     </button>
-    
-    <!-- অফলাইন/অনলাইন স্ট্যাটাস ইন্ডিকেটর (সিঙ্ক বাটন নেই) -->
-    <div id="connection-status" class="absolute top-20 right-4 flex items-center gap-2 z-40">
-        <span id="online-indicator" class="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200 hidden transition-opacity duration-500">
-            <i class="fas fa-circle text-[8px]"></i> অনলাইন
-        </span>
-        <span id="offline-indicator" class="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hidden">
-            <i class="fas fa-wifi-slash"></i> অফলাইন
-        </span>
-    </div>
-    
-    <div class="text-center mb-8 md:mb-12 mt-6">
-        <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight en">
-            <span class="text-slate-800 dark:text-white">Quick</span><span class="text-emerald-500">Z</span>
-        </h1>
-        <div class="h-1 w-20 bg-gradient-to-r from-indigo-400 to-emerald-400 rounded-full mx-auto mt-3 opacity-50"></div>
-    </div>
 
-    <div id="install-container" class="flex justify-center mb-8 hidden">
-        <button id="install-prompt-btn" class="bg-indigo-600 border border-indigo-700 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg hover:bg-indigo-700 flex items-center gap-2 bengali">
-            <i class="fas fa-download"></i> অ্যাপ হিসেবে ইনস্টল করুন
-        </button>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-12">
-        <a href="./student/" target="_self" class="portal-card group rounded-3xl p-8 md:p-10 flex flex-col items-start text-left no-underline relative overflow-hidden">
-            <div class="absolute -top-6 -right-6 w-32 h-32 bg-indigo-100/40 dark:bg-indigo-900/20 rounded-full blur-2xl"></div>
-            <div class="relative z-10 w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 shadow-md border border-indigo-100 dark:border-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 group-hover:scale-105 transition-transform">
-                <i class="fas fa-graduation-cap text-2xl"></i>
-            </div>
-            <h2 class="relative z-10 text-3xl md:text-4xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                শিক্ষার্থী <span class="badge-soft text-xs bengali">প্রবেশ</span>
-            </h2>
-            <p class="relative z-10 text-slate-600 dark:text-slate-400 text-base md:text-lg mb-5 bengali leading-relaxed">
-                লাইভ পরীক্ষা, মক টেস্ট, র‍্যাংকিং, বিস্তারিত ফলাফল ও অগ্রগতি — সবকিছু এক জায়গায়।
-            </p>
-            <div class="relative z-10 mt-auto flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold group-hover:gap-3 transition-all">
-                <span class="bengali text-base">শিক্ষার্থী পোর্টাল খুলুন</span>
-                <i class="fas fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
-            </div>
-        </a>
-
-        <a href="./teacher/" target="_self" class="portal-card group rounded-3xl p-8 md:p-10 flex flex-col items-start text-left no-underline relative overflow-hidden">
-            <div class="absolute -top-6 -left-6 w-32 h-32 bg-emerald-100/40 dark:bg-emerald-900/20 rounded-full blur-2xl"></div>
-            <div class="relative z-10 w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 shadow-md border border-emerald-100 dark:border-slate-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6 group-hover:scale-105 transition-transform">
-                <i class="fas fa-chalkboard-teacher text-2xl"></i>
-            </div>
-            <h2 class="relative z-10 text-3xl md:text-4xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                শিক্ষক <span class="badge-soft badge-emerald bg-emerald-50 text-emerald-700 bengali">প্রবেশ</span>
-            </h2>
-            <p class="relative z-10 text-slate-600 dark:text-slate-400 text-base md:text-lg mb-5 bengali leading-relaxed">
-                কোর্স তৈরি, লাইভ পরীক্ষা, প্রশ্নব্যাংক, শিক্ষার্থী ব্যবস্থাপনা ও সম্পূর্ণ অ্যানালিটিক্স।
-            </p>
-            <div class="relative z-10 mt-auto flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold group-hover:gap-3 transition-all">
-                <span class="bengali text-base">শিক্ষক পোর্টাল খুলুন</span>
-                <i class="fas fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
-            </div>
-        </a>
-    </div>
-
-    <div class="space-y-16">
-        <div>
-            <div class="flex items-center gap-3 mb-8">
-                <div class="h-10 w-1.5 bg-indigo-500 rounded-full"></div>
-                <h3 class="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white bengali">🎓 শিক্ষার্থীদের জন্য বিশেষ ফিচার</h3>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-indigo-600 dark:text-indigo-400 text-2xl mb-3"><i class="fas fa-broadcast-tower"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">লাইভ পরীক্ষা</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">রিয়েল-টাইম পরীক্ষা, লাইভ র‍্যাংকিং ও তাৎক্ষণিক ফলাফল।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-indigo-600 dark:text-indigo-400 text-2xl mb-3"><i class="fas fa-book-open"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">মক টেস্ট</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">অধ্যায়ভিত্তিক অসংখ্য প্র্যাকটিস সেট ও ব্যাখ্যা।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-indigo-600 dark:text-indigo-400 text-2xl mb-3"><i class="fas fa-chart-pie"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">অগ্রগতি রিপোর্ট</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">নিজের পারফরম্যান্স বিশ্লেষণ ও দুর্বলতা চিহ্নিতকরণ।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-indigo-600 dark:text-indigo-400 text-2xl mb-3"><i class="fas fa-trophy"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">লিডারবোর্ড</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">সেরাদের তালিকায় নিজের অবস্থান যাচাই।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-indigo-600 dark:text-indigo-400 text-2xl mb-3"><i class="fas fa-history"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">পরীক্ষা আর্কাইভ</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">পুরানো সব পরীক্ষার উত্তরপত্র যেকোনো সময় দেখার সুবিধা।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-indigo-600 dark:text-indigo-400 text-2xl mb-3"><i class="fas fa-bell"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">তাতক্ষণিক নোটিশ</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">ক্লাস বা পরীক্ষার রুটিন পরিবর্তন হলে সাথে সাথে নোটিফিকেশন।</p>
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <div class="flex items-center gap-3 mb-8">
-                <div class="h-10 w-1.5 bg-emerald-500 rounded-full"></div>
-                <h3 class="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white bengali">🧑‍🏫 শিক্ষকদের জন্য শক্তিশালী টুলস</h3>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-emerald-600 dark:text-emerald-400 text-2xl mb-3"><i class="fas fa-folder-tree"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">প্রশ্ন লাইব্রেরি</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">বিষয় ও চ্যাপ্টার ভিত্তিক প্রশ্ন সংরক্ষণ ও অটো-র‍্যান্ডমাইজেশন।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-emerald-600 dark:text-emerald-400 text-2xl mb-3"><i class="fas fa-users-cog"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">শিক্ষার্থী ম্যানেজমেন্ট</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">ব্যাচ ভিত্তিক শিক্ষার্থী যোগ করা ও ফলাফল ট্র্যাকিং।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-emerald-600 dark:text-emerald-400 text-2xl mb-3"><i class="fas fa-calendar-alt"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">শিডিউল মেকার</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">নির্দিষ্ট সময়ে স্বয়ংক্রিয় পরীক্ষা শুরু ও শেষ করার সুবিধা।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-emerald-600 dark:text-emerald-400 text-2xl mb-3"><i class="fas fa-poll"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">পোল ও ভোটিং</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">শিক্ষার্থীদের মতামত নিতে ক্লাসরুম পোল তৈরির সুবিধা।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-emerald-600 dark:text-emerald-400 text-2xl mb-3"><i class="fas fa-chart-bar"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">অ্যানালিটিক্স</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">পুরো ব্যাচের গড় ফলাফল ও পারফরম্যান্স গ্রাফ।</p>
-                </div>
-                <div class="feature-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                    <div class="text-emerald-600 dark:text-emerald-400 text-2xl mb-3"><i class="fas fa-archive"></i></div>
-                    <h4 class="font-bold text-lg mb-2 text-slate-800 dark:text-white bengali">ডেটা আর্কাইভ</h4>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm bengali">সব কোর্সের তথ্য ব্যাকআপ ও আর্কাইভ রাখার সুবিধা।</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 text-center border-t border-slate-200 dark:border-slate-800 pt-12">
-        <div class="flex flex-col items-center">
-            <div class="w-12 h-12 rounded-full bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl mb-3 shadow-sm border border-indigo-100 dark:border-slate-700"><i class="fas fa-shield-alt"></i></div>
-            <h5 class="font-bold bengali text-slate-800 dark:text-white">নিরাপদ ও গোপনীয়</h5>
-            <p class="text-sm text-slate-500 dark:text-slate-400 bengali mt-1">শিক্ষার্থীর তথ্য সম্পূর্ণ সুরক্ষিত</p>
-        </div>
-        <div class="flex flex-col items-center">
-            <div class="w-12 h-12 rounded-full bg-emerald-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl mb-3 shadow-sm border border-emerald-100 dark:border-slate-700"><i class="fas fa-bolt"></i></div>
-            <h5 class="font-bold bengali text-slate-800 dark:text-white">রিয়েল-টাইম সিঙ্ক</h5>
-            <p class="text-sm text-slate-500 dark:text-slate-400 bengali mt-1">পরীক্ষা ও ফলাফল মুহূর্তেই আপডেট হয়</p>
-        </div>
-        <div class="flex flex-col items-center">
-            <div class="w-12 h-12 rounded-full bg-amber-50 dark:bg-slate-800 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl mb-3 shadow-sm border border-amber-100 dark:border-slate-700"><i class="fas fa-mobile-alt"></i></div>
-            <h5 class="font-bold bengali text-slate-800 dark:text-white">মোবাইল ফ্রেন্ডলি</h5>
-            <p class="text-sm text-slate-500 dark:text-slate-400 bengali mt-1">স্মার্টফোন ও ট্যাবলেটে সমান কার্যকর</p>
-        </div>
-    </div>
-
-    <div class="mt-12 flex justify-center">
-        <a href="contributor/" class="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 bengali font-semibold text-lg">
-            <i class="fas fa-users"></i>
-            কন্ট্রিবিউটর
-            <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
-        </a>
-    </div>
-
-    <div class="mt-12 text-center text-sm text-slate-400 dark:text-slate-500 footer-note bengali mb-8">
-        © ২০২৫ QuickZ · শিক্ষার ডিজিটাল রূপান্তর
-    </div>
-</div>
-
-<script src="js/main.js"></script>
-<script>
-    // অফলাইন স্ট্যাটাস ইন্ডিকেটর (সিঙ্ক বাটন বিহীন)
-    (function() {
-        const onlineSpan = document.getElementById('online-indicator');
-        const offlineSpan = document.getElementById('offline-indicator');
-        let onlineTimer = null;
-
-        function updateOnlineStatus() {
-            const isOnline = navigator.onLine;
-            
-            if (isOnline) {
-                // অনলাইন ইন্ডিকেটর দেখান
-                onlineSpan.classList.remove('hidden');
-                offlineSpan.classList.add('hidden');
-                
-                // পূর্বের টাইমার ক্লিয়ার
-                if (onlineTimer) clearTimeout(onlineTimer);
-                // ৩ সেকেন্ড পর fade out করে hide
-                onlineTimer = setTimeout(() => {
-                    onlineSpan.style.opacity = '0';
-                    setTimeout(() => {
-                        onlineSpan.classList.add('hidden');
-                        onlineSpan.style.opacity = ''; // রিসেট
-                    }, 500);
-                }, 3000);
-                
-                // ব্যাকগ্রাউন্ড সিঙ্ক ট্রিগার (যদি DB মডিউল থাকে)
-                if (typeof DB !== 'undefined' && typeof DB.getPendingSyncItems === 'function') {
-                    attemptBackgroundSync();
-                }
-            } else {
-                // অফলাইন ইন্ডিকেটর দেখান, অনলাইন হাইড
-                if (onlineTimer) clearTimeout(onlineTimer);
-                onlineSpan.classList.add('hidden');
-                onlineSpan.style.opacity = '';
-                offlineSpan.classList.remove('hidden');
-            }
-        }
-
-        async function attemptBackgroundSync() {
-            if (!navigator.onLine) return;
-            try {
-                const pending = await DB.getPendingSyncItems();
-                if (pending && pending.length > 0) {
-                    await processSyncQueue(pending);
-                }
-            } catch (e) {
-                console.warn('Background sync check failed', e);
-            }
-        }
-
-        async function processSyncQueue(items) {
-            for (let item of items) {
-                try {
-                    // item.url ব্যবহার করে ফেচ (আপনার সিঙ্ক লজিক অনুযায়ী)
-                    if (item.url) {
-                        const response = await fetch(item.url, {
-                            method: item.method || 'POST',
-                            headers: item.headers || { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(item.payload)
-                        });
-                        if (response.ok) {
-                            await DB.markSyncItemDone(item.id);
-                        }
-                    } else {
-                        // যদি URL না থাকে, তাহলে collection অনুযায়ী Firebase-এ সিঙ্ক করুন (আপনার প্রয়োজনমতো)
-                        console.warn('No URL for sync item', item);
-                    }
-                } catch (err) {
-                    console.error('Sync failed for item', item.id, err);
-                }
-            }
-        }
-
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', updateOnlineStatus);
-        } else {
-            updateOnlineStatus();
-        }
-
-        // প্রতি 5 মিনিটে ব্যাকগ্রাউন্ড সিঙ্ক চেষ্টা (অনলাইন থাকলে)
-        setInterval(() => {
-            if (navigator.onLine) attemptBackgroundSync();
-        }, 300000);
-    })();
-</script>
+    <!-- Main Application Script -->
+    <script type="module" src="../src/teacher/app.js"></script>
 </body>
 </html>
