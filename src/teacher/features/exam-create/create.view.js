@@ -201,6 +201,7 @@ export function createView() {
     }
   }, 200);
   
+  // সাবজেক্ট সিলেক্ট লোড করুন
   const folderStructure = window.folderStructure || { live: [], mock: [] };
   const subjects = (folderStructure[type] || []).map(s => s.name);
   const subjectSelect = document.getElementById('nsub');
