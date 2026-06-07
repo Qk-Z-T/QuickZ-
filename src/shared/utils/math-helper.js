@@ -3,59 +3,14 @@
 
 export const MathHelper = {
   /**
-   * Pre-processes and wraps text for MathJax rendering.
-   * Automatically detects LaTeX/AsciiMath patterns and adds delimiters if missing.
-   * @param {string} text - raw text possibly containing math
-   * @returns {string} HTML string safe for insertion into DOM
-   */
-  renderExamContent(text) {
-    if (!text) return '';
-    let processed = String(text)
-      .replace(/\\propotional/g, '\\propto')
-      .replace(/\\degree/g, '^{\\circ}')
-      .replace(/\\div/g, '\\div')
-      .replace(/\\times/g, '\\times')
-      .replace(/\\approx/g, '\\approx');
-
-    const hasMathDelimiters = /\$|\\\(|\\\[/.test(processed);
-    const hasMathSymbols = /[_^\\]/.test(processed);
-
-    if (hasMathDelimiters) {
-      return `<span class="bengali-text math-render">${processed}</span>`;
-    }
-
-    if (hasMathSymbols) {
-      // Wrap in inline math delimiters for MathJax
-      return `<span class="bengali-text math-render">\\(${processed}\\)</span>`;
-    }
-
-    return `<span class="bengali-text">${processed}</span>`;
-  },
-
-  /**
-   * Process an array of option strings into HTML.
-   * @param {string[]} options
-   * @returns {string} combined HTML
-   */
-  processOptions(options) {
-    return options.map((opt, idx) => {
-      const optText = MathHelper.renderExamContent(opt);
-      return `<div class="option-math flex items-start gap-2">
-        <span class="font-bold">${String.fromCharCode(65 + idx)}.</span>
-        <span class="flex-1">${optText}</span>
-      </div>`;
-    }).join('');
-  },
-
-  /**
-   * Renders LaTeX/AsciiMath content using MathJax.
-   * This is the new method that MathEditor uses.
+   * Renders LaTeX/AsciiMath content using MathJax
    * @param {string} text - raw text possibly containing math
    * @returns {Promise<string>} HTML string with rendered math
    */
   async renderMath(text) {
     if (!text) return '';
     
+    // Preprocess common replacements
     let processed = String(text)
       .replace(/\\propotional/g, '\\propto')
       .replace(/\\degree/g, '^{\\circ}')
@@ -63,16 +18,16 @@ export const MathHelper = {
       .replace(/\\times/g, '\\times')
       .replace(/\\approx/g, '\\approx');
 
-    // Wrap in math delimiters if needed
+    // Ensure Greek letters and other symbols are properly wrapped
     const hasMathDelimiters = /\$|\\\(|\\\[/.test(processed);
     const hasMathSymbols = /[_^\\]/.test(processed);
     
-    let wrapped = processed;
+    // If it has math symbols but no delimiters, wrap in \( \)
     if (hasMathSymbols && !hasMathDelimiters) {
-      wrapped = `\\(${processed}\\)`;
+      processed = `\\(${processed}\\)`;
     }
     
-    return wrapped;
+    return processed;
   },
 
   /**
@@ -89,6 +44,3 @@ export const MathHelper = {
     }).join('');
   }
 };
-
-// Expose globally if needed for inline handlers
-window.MathHelper = MathHelper;
