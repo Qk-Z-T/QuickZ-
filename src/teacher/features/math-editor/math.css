@@ -1,75 +1,6 @@
-/* src/teacher/features/math-editor/math.css
-   Math symbol panel positioning & minor tweaks (only needed when Tailwind is not enough) */
+/* src/teacher/features/math-editor/math.css */
 
-/* Fixed positioning for math panel (shown when clicked) */
-.math-symbols-panel.fixed-position {
-  position: fixed !important;
-  top: 20px !important;
-  right: 20px !important;
-  z-index: 9999;
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-/* Overlay for math preview on textareas */
-.math-render-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  padding: 12px;
-  overflow: auto;
-  background: white;
-  border-radius: 8px;
-}
-.dark .math-render-overlay,
-.theme-dark .math-render-overlay {
-  background: #111111;
-}
-
-/* Math mode textarea hides original text */
-textarea.math-mode {
-  color: transparent !important;
-  caret-color: black;
-}
-.dark textarea.math-mode,
-.theme-dark textarea.math-mode {
-  caret-color: white;
-}
-
-/* Symbol buttons inside the panel */
-.symbol-btn {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  text-align: center;
-  transition: all 0.2s;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dark .symbol-btn,
-.theme-dark .symbol-btn {
-  background: #222222;
-  border-color: #333333;
-  color: #e2e8f0;
-}
-.symbol-btn:hover {
-  background: #e2e8f0;
-  transform: translateY(-2px);
-}
-.dark .symbol-btn:hover,
-.theme-dark .symbol-btn:hover {
-  background: #333333;
-}
-
-/* Floating math button */
+/* ফ্লোটিং ম্যাথ বাটন */
 .floating-math-btn {
   position: fixed;
   top: 80px;
@@ -93,4 +24,86 @@ textarea.math-mode {
   background: #4338ca;
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+}
+.floating-math-btn.hidden {
+  display: none !important;
+}
+
+/* ম্যাথ সিম্বল প্যানেল */
+.math-symbols-panel {
+  position: fixed;
+  top: 140px;
+  right: 30px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 15px;
+  z-index: 1000;
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: none !important;
+}
+.math-symbols-panel.show {
+  display: block !important;
+}
+.dark .math-symbols-panel {
+  background: #111;
+  border-color: #333;
+}
+
+/* সিম্বল বাটন */
+.symbol-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: center;
+  transition: all 0.2s;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dark .symbol-btn {
+  background: #222;
+  border-color: #333;
+  color: #e2e8f0;
+}
+.symbol-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+.dark .symbol-btn:hover {
+  background: #333;
+}
+
+/* প্রিভিউ ওভারলে */
+.math-render-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  padding: 12px;
+  overflow: auto;
+  background: white;
+  border-radius: 8px;
+  z-index: 5;
+}
+.dark .math-render-overlay {
+  background: #111;
+}
+
+/* ম্যাথ মোড টেক্সটএরিয়া */
+textarea.math-mode {
+  color: transparent !important;
+  caret-color: black;
+}
+.dark textarea.math-mode {
+  caret-color: white;
 }
