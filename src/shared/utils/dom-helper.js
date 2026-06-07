@@ -1,5 +1,5 @@
 // src/shared/utils/dom-helper.js
-// Common DOM manipulation utilities
+// Common DOM manipulation utilities - Updated version
 
 /**
  * Load MathJax and typeset within a specific element.
