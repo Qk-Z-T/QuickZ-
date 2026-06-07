@@ -10,7 +10,6 @@ export const MathEditor = {
   init() {
     console.log('Math Editor loading...');
 
-    // Track focused textarea
     document.addEventListener('focusin', (e) => {
       if (e.target.tagName === 'TEXTAREA' &&
         (e.target.id.includes('question') ||
@@ -20,18 +19,15 @@ export const MathEditor = {
       }
     });
 
-    // Preview button click handler
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.math-preview-btn');
       if (!btn) return;
       const textareaId = btn.dataset.target;
       const textarea = document.getElementById(textareaId);
       if (!textarea) return;
-
       this.togglePreview(textareaId, btn);
     });
 
-    // Live preview update on input
     document.addEventListener('input', (e) => {
       if (e.target.tagName === 'TEXTAREA' &&
         (e.target.id.includes('question') ||
@@ -41,15 +37,9 @@ export const MathEditor = {
       }
     });
 
-    // Floating button
     this.setupFloatingButton();
-
-    // Symbol buttons
     this.setupSymbolButtons();
-
-    // Category tabs
     this.setupCategoryTabs();
-    
     console.log('Math Editor initialized');
   },
 
@@ -67,17 +57,16 @@ export const MathEditor = {
       // Hide preview
       overlay.style.display = 'none';
       textarea.classList.remove('math-mode');
-      btn.innerHTML = '<i class="fas fa-eye"></i>';
+      btn.innerHTML = '<i class="fas fa-eye"></i>'; // চোখ আইকন ফিরিয়ে আনা
       textarea.style.color = '';
       textarea.style.webkitTextFillColor = '';
     } else {
       // Show preview
       overlay.style.display = 'block';
       textarea.classList.add('math-mode');
-      btn.innerHTML = '<i class="fas fa-code"></i>';
+      btn.innerHTML = '<i class="fas fa-code"></i>'; // কোড আইকন দেখানো
       textarea.style.color = 'transparent';
       textarea.style.webkitTextFillColor = 'transparent';
-      
       await this.renderPreview(textareaId);
     }
   },
@@ -122,14 +111,12 @@ export const MathEditor = {
     }
 
     try {
-      // Use MathHelper to render
       const rendered = await MathHelper.renderMath(content);
       const previewDiv = document.createElement('div');
       previewDiv.className = 'math-preview-content bengali-text';
       previewDiv.innerHTML = rendered;
       overlay.appendChild(previewDiv);
 
-      // Trigger MathJax
       if (window.MathJax) {
         await MathJax.typeset([previewDiv]);
       }
@@ -148,15 +135,12 @@ export const MathEditor = {
   setupFloatingButton() {
     const btn = document.getElementById('floating-math-btn');
     if (!btn) return;
-
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     newBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const panel = document.getElementById('math-symbols-panel');
-      if (panel) {
-        panel.classList.toggle('show');
-      }
+      if (panel) panel.classList.toggle('show');
     });
   },
 
@@ -165,9 +149,7 @@ export const MathEditor = {
       const symbolBtn = e.target.closest('.symbol-btn');
       if (!symbolBtn) return;
       const symbol = symbolBtn.dataset.symbol;
-      if (symbol) {
-        this.insertAtCursor(symbol);
-      }
+      if (symbol) this.insertAtCursor(symbol);
     });
   },
 
@@ -200,7 +182,6 @@ export const MathEditor = {
     const panel = document.getElementById('math-symbols-panel');
     if (panel) panel.classList.remove('show');
 
-    // Update preview if open
     if (overlayMap[textarea.id] && overlayMap[textarea.id].style.display === 'block') {
       this.renderPreview(textarea.id);
     }
@@ -218,8 +199,6 @@ export const MathEditor = {
         if (grid) grid.classList.remove('hidden');
       });
     });
-    
-    // Default: Basic tab active
     const defaultTab = document.querySelector('.cat-tab[data-cat="basic"]');
     if (defaultTab) defaultTab.click();
   },
@@ -230,14 +209,12 @@ export const MathEditor = {
   }
 };
 
-// Auto resize helper
 window.autoResizeTextarea = function(textarea) {
   if (!textarea) return;
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
 };
 
-// Show math button helper
 window.showMathButton = function() {
   const btn = document.getElementById('floating-math-btn');
   if (btn) {
@@ -246,7 +223,6 @@ window.showMathButton = function() {
   }
 };
 
-// Initialize
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     MathEditor.init();
