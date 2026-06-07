@@ -6,7 +6,6 @@ import { AppState } from '../../core/state.js';
 export function renderCreateForm(type) {
   const isLive = type === 'live';
   const groupName = AppState.selectedGroup?.name || 'Course';
-
   const folderStructure = window.folderStructure || { live: [], mock: [] };
   const subjects = (folderStructure[type] || []).map(s => s.name);
 
@@ -18,7 +17,6 @@ export function renderCreateForm(type) {
         </button>
       </div>
       <h2 class="text-xl font-bold mb-4 font-en text-gray-800 dark:text-white">Create ${isLive ? 'Live Exam' : 'Practice Test'}</h2>
-
       <div class="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border dark:border-gray-700 mb-4 flex items-center gap-3">
         <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600 text-sm">
           <i class="fas fa-book"></i>
@@ -28,11 +26,9 @@ export function renderCreateForm(type) {
           <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">পরীক্ষা তৈরি হচ্ছে</span>
         </div>
       </div>
-
       <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border dark:border-gray-700 w-full">
         <input id="nt" class="w-full p-3 border dark:border-gray-700 dark:bg-black dark:text-white rounded-xl" placeholder="Exam Title">
         <input type="hidden" id="nty" value="${type}">
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
           <div>
             <label class="block text-sm font-bold mb-1 dark:text-white">Subject</label>
@@ -48,7 +44,6 @@ export function renderCreateForm(type) {
             </select>
           </div>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
           <div>
             <label class="block text-sm font-bold mb-1 dark:text-white">Duration (Minutes)</label>
@@ -59,7 +54,6 @@ export function renderCreateForm(type) {
             <input id="nm" type="number" class="w-full p-3 border dark:border-gray-700 dark:bg-black dark:text-white rounded-xl" placeholder="e.g., 100" required>
           </div>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
           <div>
             <label class="block text-sm font-bold mb-1 dark:text-white">Negative Mark</label>
@@ -71,7 +65,6 @@ export function renderCreateForm(type) {
           </div>
           <div class="flex items-center text-xs text-gray-500 bg-gray-50 dark:bg-gray-700 dark:text-gray-400 p-2 rounded border dark:border-gray-700">Type: ${type.toUpperCase()}</div>
         </div>
-
         ${isLive ? `
         <div class="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 space-y-3 mt-4">
           <div>
@@ -87,7 +80,6 @@ export function renderCreateForm(type) {
             <label for="nautopub" class="text-sm font-bold text-gray-700 dark:text-gray-300">Auto Publish Result when exam ends</label>
           </div>
         </div>` : ''}
-
         <div class="flex items-center justify-between mb-3 mt-6">
           <label class="text-sm font-bold text-gray-700 dark:text-white">Question Mode:</label>
           <div class="flex items-center gap-2">
@@ -95,22 +87,18 @@ export function renderCreateForm(type) {
             <button id="mode-json" onclick="Teacher.switchQuestionMode('json')" class="px-3 py-1.5 text-sm font-bold bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg">JSON</button>
           </div>
         </div>
-
         <div id="questions-list" class="space-y-3 mb-6">
           <h3 class="font-bold text-lg mb-2 dark:text-white">Questions List (0)</h3>
           <div class="text-center p-4 text-gray-400">No questions added yet</div>
         </div>
-
         <div id="manual-questions-container" class="space-y-4 w-full">
           <div class="question-box dark:bg-black dark:border-gray-700 w-full">
             <h3 class="font-bold text-lg mb-3 dark:text-white" id="question-form-title">Add New Question</h3>
-
             <div class="question-field-container mb-3 w-full">
               <label class="block text-sm font-bold mb-1 dark:text-white">Question Text</label>
               <textarea id="textarea-question" class="w-full p-3 border dark:border-gray-700 dark:bg-black dark:text-white rounded-xl question-textarea auto-resize box-border" rows="3" placeholder="Enter question text..." oninput="window.autoResizeTextarea(this)"></textarea>
               <button type="button" class="math-preview-btn" data-target="textarea-question"><i class="fas fa-eye"></i></button>
             </div>
-
             <div class="mb-3 w-full">
               <label class="block text-sm font-bold mb-2 dark:text-white">Options:</label>
               <div class="space-y-2 w-full">
@@ -125,7 +113,6 @@ export function renderCreateForm(type) {
                 `).join('')}
               </div>
             </div>
-
             <div class="mb-3 w-full">
               <label class="block text-sm font-bold mb-1 dark:text-white">Correct Answer</label>
               <select id="correct-answer" class="w-full p-2 border dark:border-gray-700 dark:bg-black dark:text-white rounded">
@@ -136,7 +123,6 @@ export function renderCreateForm(type) {
                 <option value="3">D</option>
               </select>
             </div>
-
             <div class="mb-3 w-full">
               <label class="block text-sm font-bold mb-1 dark:text-white">Explanation (Optional)</label>
               <div class="question-field-container w-full">
@@ -144,7 +130,6 @@ export function renderCreateForm(type) {
                 <button type="button" class="math-preview-btn" data-target="explanation"><i class="fas fa-eye"></i></button>
               </div>
             </div>
-
             <div class="mb-3 w-full">
               <label class="block text-sm font-bold mb-1 dark:text-white">Previous Year (Optional)</label>
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
@@ -155,13 +140,11 @@ export function renderCreateForm(type) {
                 </div>
               </div>
             </div>
-
             <button onclick="Teacher.addQuestionToList()" id="add-question-btn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
               <i class="fas fa-plus mr-2"></i> Add Question to List
             </button>
           </div>
         </div>
-
         <div id="json-container" class="hidden w-full mt-4">
           <div class="json-actions flex gap-2 mb-2">
             <button onclick="Teacher.copyJson()" class="bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold"><i class="fas fa-copy mr-1"></i> Copy JSON</button>
@@ -169,7 +152,6 @@ export function renderCreateForm(type) {
           </div>
           <textarea id="nq" class="w-full h-40 p-3 border dark:border-gray-700 dark:bg-black dark:text-white rounded-xl font-mono text-xs auto-resize box-border" placeholder='Paste JSON Question Array here...' oninput="window.autoResizeTextarea(this)"></textarea>
         </div>
-
         ${isLive ? `
         <div class="flex flex-col sm:flex-row gap-2 mt-6">
           <button onclick="Teacher.createExam(false)" class="flex-1 bg-gray-800 dark:bg-gray-700 text-white py-4 rounded-xl font-bold shadow hover:bg-gray-900 dark:hover:bg-black transition">Publish Now</button>
@@ -201,7 +183,6 @@ export function createView() {
     }
   }, 200);
   
-  // সাবজেক্ট সিলেক্ট লোড করুন
   const folderStructure = window.folderStructure || { live: [], mock: [] };
   const subjects = (folderStructure[type] || []).map(s => s.name);
   const subjectSelect = document.getElementById('nsub');
