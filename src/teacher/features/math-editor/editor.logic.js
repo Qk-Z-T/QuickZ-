@@ -9,8 +9,6 @@ let overlayMap = {};
 export const MathEditor = {
   init() {
     console.log('Math Editor loading...');
-
-    // Track focused textarea
     document.addEventListener('focusin', (e) => {
       if (e.target.tagName === 'TEXTAREA' &&
         (e.target.id.includes('question') ||
@@ -19,8 +17,6 @@ export const MathEditor = {
         currentFocusedTextarea = e.target;
       }
     });
-
-    // Preview button click handler
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.math-preview-btn');
       if (!btn) return;
@@ -29,8 +25,6 @@ export const MathEditor = {
       if (!textarea) return;
       this.togglePreview(textareaId, btn);
     });
-
-    // Live preview update on input
     document.addEventListener('input', (e) => {
       if (e.target.tagName === 'TEXTAREA' &&
         (e.target.id.includes('question') ||
@@ -39,7 +33,6 @@ export const MathEditor = {
         this.updatePreview(e.target.id);
       }
     });
-
     this.setupFloatingButton();
     this.setupSymbolButtons();
     this.setupCategoryTabs();
@@ -49,22 +42,18 @@ export const MathEditor = {
   async togglePreview(textareaId, btn) {
     const textarea = document.getElementById(textareaId);
     if (!textarea) return;
-
     let overlay = overlayMap[textareaId];
     if (!overlay) {
       overlay = this.createOverlay(textareaId);
       overlayMap[textareaId] = overlay;
     }
-
     if (overlay.style.display === 'block') {
-      // Hide preview
       overlay.style.display = 'none';
       textarea.classList.remove('math-mode');
       btn.innerHTML = '<i class="fas fa-eye"></i>';
       textarea.style.color = '';
       textarea.style.webkitTextFillColor = '';
     } else {
-      // Show preview
       overlay.style.display = 'block';
       textarea.classList.add('math-mode');
       btn.innerHTML = '<i class="fas fa-code"></i>';
@@ -77,7 +66,6 @@ export const MathEditor = {
   createOverlay(textareaId) {
     const textarea = document.getElementById(textareaId);
     if (!textarea) return null;
-
     const overlay = document.createElement('div');
     overlay.id = 'overlay-' + textareaId;
     overlay.className = 'math-preview-overlay';
@@ -94,7 +82,6 @@ export const MathEditor = {
     overlay.style.borderRadius = '8px';
     overlay.style.boxSizing = 'border-box';
     overlay.style.pointerEvents = 'none';
-
     textarea.parentNode.style.position = 'relative';
     textarea.parentNode.insertBefore(overlay, textarea.nextSibling);
     return overlay;
@@ -104,29 +91,24 @@ export const MathEditor = {
     const textarea = document.getElementById(textareaId);
     const overlay = overlayMap[textareaId];
     if (!textarea || !overlay) return;
-
     const content = textarea.value || '';
     overlay.innerHTML = '';
-
     if (!content.trim()) {
       overlay.innerHTML = '<div class="text-center text-gray-400 p-4">No content to preview</div>';
       return;
     }
-
     try {
       const rendered = await MathHelper.renderMath(content);
       const previewDiv = document.createElement('div');
       previewDiv.className = 'math-preview-content bengali-text';
       previewDiv.innerHTML = rendered;
       overlay.appendChild(previewDiv);
-
-      // Trigger MathJax
       if (window.MathJax) {
-        await MathJax.typesetPromise([previewDiv]);
+        await MathJax.typeset([previewDiv]);
       }
     } catch (error) {
       console.error('Math rendering error:', error);
-      overlay.innerHTML = `<div class="text-red-500 p-2">Error rendering math: ${error.message}</div>`;
+      overlay.innerHTML = `<div class="text-red-500 p-2">Error rendering math</div>`;
     }
   },
 
@@ -168,7 +150,6 @@ export const MathEditor = {
         return;
       }
     }
-
     const textarea = currentFocusedTextarea;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -182,10 +163,8 @@ export const MathEditor = {
     textarea.selectionEnd = cursorPos;
     textarea.dispatchEvent(new Event('input'));
     textarea.focus();
-
     const panel = document.getElementById('math-symbols-panel');
     if (panel) panel.classList.remove('show');
-
     if (overlayMap[textarea.id] && overlayMap[textarea.id].style.display === 'block') {
       this.renderPreview(textarea.id);
     }
