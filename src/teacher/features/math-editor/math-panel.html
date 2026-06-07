@@ -1,0 +1,172 @@
+<!-- src/teacher/features/math-editor/math-panel.html -->
+<!-- Math Symbols Panel -->
+<div id="math-symbols-panel" class="math-symbols-panel">
+    <div class="panel-header">
+        <span class="panel-title">📐 Math Symbols</span>
+        <button class="panel-close" onclick="window.MathEditor.closePanel()">×</button>
+    </div>
+    <div class="panel-body">
+        <!-- Category Tabs -->
+        <div class="category-tabs">
+            <button class="cat-tab active" data-cat="basic">Basic</button>
+            <button class="cat-tab" data-cat="calc">Calculus</button>
+            <button class="cat-tab" data-cat="trig">Trig</button>
+            <button class="cat-tab" data-cat="algebra">Algebra</button>
+            <button class="cat-tab" data-cat="geometry">Geometry</button>
+            <button class="cat-tab" data-cat="set">Set & Logic</button>
+            <button class="cat-tab" data-cat="matrix">Matrix</button>
+            <button class="cat-tab" data-cat="number">Number</button>
+        </div>
+
+        <!-- Symbol Grids -->
+        <div class="symbol-grid-container">
+            <!-- Basic -->
+            <div class="symbol-grid" data-cat="basic">
+                <button class="symbol-btn" data-symbol="+">+</button>
+                <button class="symbol-btn" data-symbol="-">-</button>
+                <button class="symbol-btn" data-symbol="\\times">×</button>
+                <button class="symbol-btn" data-symbol="\\div">÷</button>
+                <button class="symbol-btn" data-symbol="=">=</button>
+                <button class="symbol-btn" data-symbol="\\neq">≠</button>
+                <button class="symbol-btn" data-symbol="\\pm">±</button>
+                <button class="symbol-btn" data-symbol="\\mp">∓</button>
+                <button class="symbol-btn" data-symbol="\\approx">≈</button>
+                <button class="symbol-btn" data-symbol="\\propto">∝</button>
+                <button class="symbol-btn" data-symbol="\\infty">∞</button>
+                <button class="symbol-btn" data-symbol="\\sqrt{}">√</button>
+                <button class="symbol-btn" data-symbol="\\cbrt{}">∛</button>
+                <button class="symbol-btn" data-symbol="\\sqrt[4]{}">∜</button>
+            </div>
+
+            <!-- Calculus -->
+            <div class="symbol-grid hidden" data-cat="calc">
+                <button class="symbol-btn" data-symbol="\\int">∫</button>
+                <button class="symbol-btn" data-symbol="\\iint">∬</button>
+                <button class="symbol-btn" data-symbol="\\iiint">∭</button>
+                <button class="symbol-btn" data-symbol="\\sum">∑</button>
+                <button class="symbol-btn" data-symbol="\\prod">∏</button>
+                <button class="symbol-btn" data-symbol="\\lim_{}">lim</button>
+                <button class="symbol-btn" data-symbol="\\partial">∂</button>
+                <button class="symbol-btn" data-symbol="\\nabla">∇</button>
+                <button class="symbol-btn" data-symbol="\\Delta">Δ</button>
+                <button class="symbol-btn" data-symbol="\\frac{d}{dx}">d/dx</button>
+                <button class="symbol-btn" data-symbol="dx">dx</button>
+                <button class="symbol-btn" data-symbol="dy">dy</button>
+                <button class="symbol-btn" data-symbol="dz">dz</button>
+            </div>
+
+            <!-- Trigonometry -->
+            <div class="symbol-grid hidden" data-cat="trig">
+                <button class="symbol-btn" data-symbol="\\sin">sin</button>
+                <button class="symbol-btn" data-symbol="\\cos">cos</button>
+                <button class="symbol-btn" data-symbol="\\tan">tan</button>
+                <button class="symbol-btn" data-symbol="\\cot">cot</button>
+                <button class="symbol-btn" data-symbol="\\sec">sec</button>
+                <button class="symbol-btn" data-symbol="\\csc">csc</button>
+                <button class="symbol-btn" data-symbol="\\theta">θ</button>
+                <button class="symbol-btn" data-symbol="\\phi">φ</button>
+                <button class="symbol-btn" data-symbol="\\pi">π</button>
+                <button class="symbol-btn" data-symbol="\\arcsin">arcsin</button>
+                <button class="symbol-btn" data-symbol="\\arccos">arccos</button>
+                <button class="symbol-btn" data-symbol="\\arctan">arctan</button>
+                <button class="symbol-btn" data-symbol="\\sinh">sinh</button>
+            </div>
+
+            <!-- Algebra -->
+            <div class="symbol-grid hidden" data-cat="algebra">
+                <button class="symbol-btn" data-symbol="^{}">x²</button>
+                <button class="symbol-btn" data-symbol="_{}">x₁</button>
+                <button class="symbol-btn" data-symbol="\\frac{}{}">½</button>
+                <button class="symbol-btn" data-symbol="\\binom{}{}">C</button>
+                <button class="symbol-btn" data-symbol="\\sqrt{}">√</button>
+                <button class="symbol-btn" data-symbol="\\sqrt[3]{}">∛</button>
+                <button class="symbol-btn" data-symbol="\\sqrt[4]{}">∜</button>
+                <button class="symbol-btn" data-symbol="\\overrightarrow{}">→</button>
+                <button class="symbol-btn" data-symbol="\\overleftarrow{}">←</button>
+                <button class="symbol-btn" data-symbol="\\overline{}">¯</button>
+                <button class="symbol-btn" data-symbol="\\underline{}">_</button>
+                <button class="symbol-btn" data-symbol="\\widehat{}">^</button>
+                <button class="symbol-btn" data-symbol="\\widetilde{}">~</button>
+                <button class="symbol-btn" data-symbol="\\vec{}">⃗</button>
+            </div>
+
+            <!-- Geometry -->
+            <div class="symbol-grid hidden" data-cat="geometry">
+                <button class="symbol-btn" data-symbol="\\angle">∠</button>
+                <button class="symbol-btn" data-symbol="\\measuredangle">∡</button>
+                <button class="symbol-btn" data-symbol="\\sphericalangle">∢</button>
+                <button class="symbol-btn" data-symbol="\\perp">⊥</button>
+                <button class="symbol-btn" data-symbol="\\parallel">∥</button>
+                <button class="symbol-btn" data-symbol="\\nparallel">∦</button>
+                <button class="symbol-btn" data-symbol="\\triangle">△</button>
+                <button class="symbol-btn" data-symbol="\\square">□</button>
+                <button class="symbol-btn" data-symbol="\\circle">○</button>
+                <button class="symbol-btn" data-symbol="\\diamond">◇</button>
+                <button class="symbol-btn" data-symbol="\\cong">≅</button>
+                <button class="symbol-btn" data-symbol="\\sim">∼</button>
+                <button class="symbol-btn" data-symbol="\\simeq">≃</button>
+            </div>
+
+            <!-- Set & Logic -->
+            <div class="symbol-grid hidden" data-cat="set">
+                <button class="symbol-btn" data-symbol="\\in">∈</button>
+                <button class="symbol-btn" data-symbol="\\notin">∉</button>
+                <button class="symbol-btn" data-symbol="\\subseteq">⊆</button>
+                <button class="symbol-btn" data-symbol="\\subset">⊂</button>
+                <button class="symbol-btn" data-symbol="\\supseteq">⊇</button>
+                <button class="symbol-btn" data-symbol="\\supset">⊃</button>
+                <button class="symbol-btn" data-symbol="\\cap">∩</button>
+                <button class="symbol-btn" data-symbol="\\cup">∪</button>
+                <button class="symbol-btn" data-symbol="\\emptyset">∅</button>
+                <button class="symbol-btn" data-symbol="\\wedge">∧</button>
+                <button class="symbol-btn" data-symbol="\\vee">∨</button>
+                <button class="symbol-btn" data-symbol="\\neg">¬</button>
+                <button class="symbol-btn" data-symbol="\\Rightarrow">⇒</button>
+                <button class="symbol-btn" data-symbol="\\Leftrightarrow">⇔</button>
+                <button class="symbol-btn" data-symbol="\\forall">∀</button>
+                <button class="symbol-btn" data-symbol="\\exists">∃</button>
+                <button class="symbol-btn" data-symbol="\\nexists">∄</button>
+            </div>
+
+            <!-- Matrix -->
+            <div class="symbol-grid hidden" data-cat="matrix">
+                <button class="symbol-btn" data-symbol="\\begin{pmatrix} \\end{pmatrix}">( )</button>
+                <button class="symbol-btn" data-symbol="\\begin{bmatrix} \\end{bmatrix}">[ ]</button>
+                <button class="symbol-btn" data-symbol="\\begin{Bmatrix} \\end{Bmatrix}">{ }</button>
+                <button class="symbol-btn" data-symbol="\\begin{vmatrix} \\end{vmatrix}">| |</button>
+                <button class="symbol-btn" data-symbol="\\begin{Vmatrix} \\end{Vmatrix}">‖ ‖</button>
+                <button class="symbol-btn" data-symbol="\\det">det</button>
+                <button class="symbol-btn" data-symbol="\\tr">tr</button>
+                <button class="symbol-btn" data-symbol="\\operatorname{rank}">rank</button>
+                <button class="symbol-btn" data-symbol="\\operatorname{null}">null</button>
+                <button class="symbol-btn" data-symbol="\\operatorname{diag}">diag</button>
+                <button class="symbol-btn" data-symbol="\\operatorname{adj}">adj</button>
+                <button class="symbol-btn" data-symbol="\\operatorname{inv}">inv</button>
+                <button class="symbol-btn" data-symbol="\\cdot">·</button>
+            </div>
+
+            <!-- Number Sets -->
+            <div class="symbol-grid hidden" data-cat="number">
+                <button class="symbol-btn" data-symbol="\\mathbb{N}">ℕ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{Z}">ℤ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{Q}">ℚ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{R}">ℝ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{C}">ℂ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{H}">ℍ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{O}">𝕆</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{P}">ℙ</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{F}">𝔽</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{A}">𝔸</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{B}">𝔹</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{D}">𝔻</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{E}">𝔼</button>
+                <button class="symbol-btn" data-symbol="\\mathbb{G}">𝔾</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Math Button -->
+<button id="floating-math-btn" class="floating-math-btn hidden">
+    <i class="fas fa-superscript"></i>
+</button>
