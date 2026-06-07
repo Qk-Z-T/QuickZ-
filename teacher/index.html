@@ -198,66 +198,35 @@
         </div>
     </div>
 
-    <!-- Floating Math Button -->
+    <!-- Floating Math Button (একটিমাত্র) -->
     <button id="floating-math-btn" class="floating-math-btn hidden">
-        <i class="fas fa-square-root-alt"></i>
+        <i class="fas fa-superscript"></i>
     </button>
 
-    <!-- Math Symbols Panel -->
-    <div id="math-symbols-panel" class="fixed top-36 right-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 z-50 w-80 max-h-96 overflow-y-auto hidden">
+    <!-- Math Symbols Panel (একটিমাত্র) -->
+    <div id="math-symbols-panel" class="math-symbols-panel fixed top-36 right-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 z-50 w-80 max-h-96 overflow-y-auto hidden">
         <button class="absolute top-2 right-2 text-gray-400 hover:text-red-500" onclick="MathEditor.closePanel()"><i class="fas fa-times"></i></button>
-        <div class="grid grid-cols-5 gap-1">
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('+')">+</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('-')">-</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\times')">×</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\div')">÷</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('=')">=</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\frac{}{}')">½</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\sqrt{}')">√</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('^{}')">x²</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('_{}')">x₁</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\int')">∫</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\sum')">∑</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\alpha')">α</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\beta')">β</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\pi')">π</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\theta')">θ</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\to')">→</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\leq')">≤</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\geq')">≥</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\infty')">∞</button>
-            <button class="symbol-btn" onclick="MathEditor.insertAtCursor('\\therefore')">∴</button>
+        <div class="grid grid-cols-4 gap-2">
+            <button class="symbol-btn" data-symbol="\\frac{}{}">½</button>
+            <button class="symbol-btn" data-symbol="\\sqrt{}">√</button>
+            <button class="symbol-btn" data-symbol="^{}">x²</button>
+            <button class="symbol-btn" data-symbol="_{}">x₁</button>
+            <button class="symbol-btn" data-symbol="\\sum">∑</button>
+            <button class="symbol-btn" data-symbol="\\int">∫</button>
+            <button class="symbol-btn" data-symbol="\\alpha">α</button>
+            <button class="symbol-btn" data-symbol="\\beta">β</button>
+            <button class="symbol-btn" data-symbol="\\pi">π</button>
+            <button class="symbol-btn" data-symbol="\\theta">θ</button>
+            <button class="symbol-btn" data-symbol="\\infty">∞</button>
+            <button class="symbol-btn" data-symbol="\\pm">±</button>
+            <button class="symbol-btn" data-symbol="\\times">×</button>
+            <button class="symbol-btn" data-symbol="\\div">÷</button>
+            <button class="symbol-btn" data-symbol="\\approx">≈</button>
+            <button class="symbol-btn" data-symbol="\\propto">∝</button>
         </div>
     </div>
-    <!-- Floating Math Button -->
-<button id="floating-math-btn" class="floating-math-btn hidden">
-  <i class="fas fa-superscript"></i>
-</button>
-
-<!-- Math Symbols Panel -->
-<div id="math-symbols-panel" class="math-symbols-panel">
-  <div class="grid grid-cols-4 gap-2">
-    <button class="symbol-btn" data-symbol="\\frac{}{}">\frac{}{}</button>
-    <button class="symbol-btn" data-symbol="\\sqrt{}">\sqrt{}</button>
-    <button class="symbol-btn" data-symbol="\\sum">\sum</button>
-    <button class="symbol-btn" data-symbol="\\int">\int</button>
-    <button class="symbol-btn" data-symbol="\\lim">\lim</button>
-    <button class="symbol-btn" data-symbol="\\alpha">\alpha</button>
-    <button class="symbol-btn" data-symbol="\\beta">\beta</button>
-    <button class="symbol-btn" data-symbol="\\gamma">\gamma</button>
-    <button class="symbol-btn" data-symbol="\\theta">\theta</button>
-    <button class="symbol-btn" data-symbol="\\pi">\pi</button>
-    <button class="symbol-btn" data-symbol="\\infty">\infty</button>
-    <button class="symbol-btn" data-symbol="\\pm">\pm</button>
-    <button class="symbol-btn" data-symbol="\\times">\times</button>
-    <button class="symbol-btn" data-symbol="\\div">\div</button>
-    <button class="symbol-btn" data-symbol="\\approx">\approx</button>
-    <button class="symbol-btn" data-symbol="\\propto">\propto</button>
-  </div>
-</div>
 
     <!-- Main Application Script -->
-    <!-- db.service.js is imported by app.js as a module; the extra script tag removed to prevent syntax error -->
     <script type="module" src="../src/teacher/app.js"></script>
 </body>
 </html>
