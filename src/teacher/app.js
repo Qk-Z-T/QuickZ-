@@ -1,5 +1,5 @@
 // src/teacher/app.js
-// Teacher portal entry point
+// Teacher portal entry point - Updated version
 
 import { AppState } from './core/state.js';
 import { Auth, AuthUI } from './core/auth.js';
@@ -8,6 +8,7 @@ import { Teacher } from './teacher-core.js';
 import { initRealTimeSync, clearListeners } from './features/realtime-sync/sync.logic.js';
 import { OfflineSync } from '../shared/services/offline-sync.js';
 import { DashboardLogic } from './features/dashboard/dashboard.logic.js';
+import { loadMathPanel } from './features/math-editor/math-loader.js';
 
 // Attach dashboard methods to Teacher
 Teacher.homeView = DashboardLogic.homeView;
@@ -31,8 +32,7 @@ import './features/groups/groups.logic.js';
 import './features/groups/groups.view.js';
 import './features/profile/profile.logic.js';
 import './features/profile/profile.view.js';
-import './features/math-editor/editor.logic.js'; // ✅ Math Editor
-// Math CSS is imported via global.css or teacher/styles.css
+import './features/math-editor/editor.logic.js';
 
 // ---------- Globals ----------
 window.AppState = AppState;
@@ -176,6 +176,11 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.student-three-dot-menu')) {
     document.querySelectorAll('.student-dot-menu-dropdown').forEach(d => d.classList.remove('show'));
   }
+});
+
+// Math panel load
+document.addEventListener('DOMContentLoaded', () => {
+  loadMathPanel();
 });
 
 function hideSplash() {
