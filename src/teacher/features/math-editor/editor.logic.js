@@ -1,16 +1,17 @@
 // src/teacher/features/math-editor/editor.logic.js
-// Math Editor - সম্পূর্ণ নতুন সংস্করণ (Preview ঠিক করা)
+// Math Editor - Advanced Preview System
 
 console.log('📐 Math Editor Loading...');
 
 window.MathEditor = {
   currentTextarea: null,
-  panelOpen: false,
+  overlayMap: {},
 
+  // ইনিশিয়ালাইজ
   init() {
     console.log('Math Editor Initializing...');
     
-    // টেক্সট এরিয়া ফোকাস ট্র্যাক করা
+    // ফোকাস ট্র্যাক
     document.addEventListener('focusin', (e) => {
       if (e.target.tagName === 'TEXTAREA' && 
           (e.target.id.includes('question') || 
@@ -20,84 +21,173 @@ window.MathEditor = {
       }
     });
 
+    // প্রিভিউ বাটন সেটআপ (Event Delegation)
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.math-preview-btn');
+      if (!btn) return;
+      this.handlePreviewClick(btn);
+    });
+
+    // লাইভ প্রিভিউ আপডেট (টাইপ করার সাথে সাথে)
+    document.addEventListener('input', (e) => {
+      if (e.target.tagName === 'TEXTAREA' && 
+          (e.target.id.includes('question') || 
+           e.target.id.includes('option') || 
+           e.target.id.includes('explanation'))) {
+        this.updateLivePreview(e.target.id);
+      }
+    });
+
+    // ফ্লোটিং বাটন সেটআপ
     this.setupFloatingButton();
-    this.setupSymbolButtons();
-    this.setupPreviewButtons(); // এখানে প্রিভিউ সেটআপ
 
     console.log('✅ Math Editor Ready');
   },
 
+  // প্রিভিউ ক্লিক হ্যান্ডলার
+  handlePreviewClick(btn) {
+    const textareaId = btn.dataset.target;
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return;
+
+    // ওভারলে তৈরি করুন (যতবার ক্লিক করবেন ততবার নয়)
+    if (!this.overlayMap[textareaId]) {
+      this.overlayMap[textareaId] = this.createOverlay(textareaId);
+    }
+
+    const overlay = this.overlayMap[textareaId];
+    
+    if (overlay.classList.contains('active')) {
+      // প্রিভিউ বন্ধ করুন
+      overlay.classList.remove('active');
+      overlay.style.display = 'none';
+      textarea.classList.remove('math-mode');
+      btn.innerHTML = '<i class="fas fa-eye"></i>';
+      // Textarea show again
+      textarea.style.color = '';
+      textarea.style.webkitTextFillColor = '';
+    } else {
+      // প্রিভিউ খুলুন
+      overlay.style.display = 'block';
+      // Force a small delay then show
+      requestAnimationFrame(() => {
+        overlay.classList.add('active');
+      });
+      textarea.classList.add('math-mode');
+      btn.innerHTML = '<i class="fas fa-code"></i>';
+      // Textarea content hidden
+      textarea.style.color = 'transparent';
+      textarea.style.webkitTextFillColor = 'transparent';
+      
+      // রেন্ডার করুন
+      this.renderOverlay(textareaId);
+    }
+  },
+
+  // ওভারলে তৈরি
+  createOverlay(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return null;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'overlay-' + textareaId;
+    overlay.className = 'math-preview-overlay';
+    overlay.style.display = 'none';
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.padding = '12px';
+    overlay.style.overflow = 'auto';
+    overlay.style.background = '#ffffff';
+    overlay.style.zIndex = '10';
+    overlay.style.borderRadius = '8px';
+    overlay.style.boxSizing = 'border-box';
+    overlay.style.pointerEvents = 'none'; // allow clicking through to textarea if needed
+
+    textarea.parentNode.style.position = 'relative';
+    textarea.parentNode.insertBefore(overlay, textarea.nextSibling);
+
+    console.log('Overlay created for:', textareaId);
+    return overlay;
+  },
+
+  // ওভারলে রেন্ডার
+  renderOverlay(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    const overlay = this.overlayMap[textareaId];
+    if (!textarea || !overlay) return;
+
+    const content = textarea.value || '';
+    overlay.innerHTML = '';
+
+    if (!content.trim()) {
+      overlay.innerHTML = '<div class="text-center text-gray-400 p-4">No content to preview</div>';
+      return;
+    }
+
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'math-preview-content bengali-text';
+    
+    // প্রসেসিং: যদি LaTeX সিম্বল থাকে কিন্তু ডেলিমিটার না থাকে, তাহলে \( \) যোগ করুন
+    let processed = content;
+    const hasLatex = /\\[a-zA-Z]|\\[\[\]\(\)]|\^|_|\\frac|\\sqrt|\\sum|\\int|\\lim/.test(content);
+    const isWrapped = /\\\(.*\\\)|\\\[.*\\\]/.test(content);
+    if (hasLatex && !isWrapped) {
+      processed = `\\(${content}\\)`;
+    }
+
+    previewDiv.innerHTML = processed;
+    overlay.appendChild(previewDiv);
+
+    // MathJax দিয়ে রেন্ডার
+    if (window.MathJax) {
+      try {
+        MathJax.typeset([previewDiv]).catch((err) => {
+          console.warn('MathJax typeset error:', err);
+          // Fallback: show raw text
+          previewDiv.innerHTML = processed;
+        });
+      } catch (e) {
+        console.warn('MathJax error:', e);
+        previewDiv.innerHTML = processed;
+      }
+    } else {
+      // MathJax না থাকলে র টেক্সট দেখান
+      previewDiv.innerHTML = processed;
+    }
+  },
+
+  // লাইভ প্রিভিউ আপডেট (টাইপ করার সাথে সাথে)
+  updateLivePreview(textareaId) {
+    const overlay = this.overlayMap[textareaId];
+    if (!overlay || !overlay.classList.contains('active')) return;
+    this.renderOverlay(textareaId);
+  },
+
+  // ফ্লোটিং বাটন সেটআপ
   setupFloatingButton() {
     const btn = document.getElementById('floating-math-btn');
     if (!btn) {
-      console.warn('⚠️ Floating math button not found');
+      console.warn('Floating math button not found');
       return;
     }
+
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
+
     newBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const panel = document.getElementById('math-symbols-panel');
       if (panel) {
         panel.classList.toggle('show');
-        this.panelOpen = panel.classList.contains('show');
+        console.log('Panel toggled:', panel.classList.contains('show') ? 'open' : 'closed');
       }
     });
-    console.log('✅ Floating button ready');
   },
 
-  setupSymbolButtons() {
-    document.addEventListener('click', (e) => {
-      const symbolBtn = e.target.closest('.symbol-btn');
-      if (!symbolBtn) return;
-      const symbol = symbolBtn.dataset.symbol;
-      if (symbol) this.insertAtCursor(symbol);
-    });
-    console.log('✅ Symbol buttons ready');
-  },
-
-  setupPreviewButtons() {
-    // প্রিভিউ বাটন ক্লিক হ্যান্ডলার
-    document.addEventListener('click', (e) => {
-      const previewBtn = e.target.closest('.math-preview-btn');
-      if (!previewBtn) return;
-
-      const textareaId = previewBtn.dataset.target;
-      const textarea = document.getElementById(textareaId);
-      if (!textarea) {
-        console.warn('Textarea not found:', textareaId);
-        return;
-      }
-
-      // ওভারলে তৈরি বা টগল
-      let overlay = document.getElementById('overlay-' + textareaId);
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'overlay-' + textareaId;
-        overlay.className = 'math-render-overlay';
-        overlay.style.display = 'none';
-        // প্যারেন্ট পজিশন রিলেটিভ করুন
-        textarea.parentNode.style.position = 'relative';
-        textarea.parentNode.insertBefore(overlay, textarea.nextSibling);
-        console.log('Overlay created for:', textareaId);
-      }
-
-      if (overlay.style.display === 'none') {
-        // শো প্রিভিউ
-        overlay.style.display = 'block';
-        textarea.classList.add('math-mode');
-        previewBtn.innerHTML = '<i class="fas fa-code"></i>';
-        this.updatePreview(textareaId);
-      } else {
-        // হাইড প্রিভিউ
-        overlay.style.display = 'none';
-        textarea.classList.remove('math-mode');
-        previewBtn.innerHTML = '<i class="fas fa-eye"></i>';
-      }
-    });
-    console.log('✅ Preview buttons ready');
-  },
-
+  // সিম্বল ইনসার্ট
   insertAtCursor(symbol) {
     if (!this.currentTextarea) {
       const textarea = document.querySelector('textarea.question-textarea, textarea.option-textarea, textarea.explanation-textarea');
@@ -109,92 +199,39 @@ window.MathEditor = {
         return;
       }
     }
+
     const textarea = this.currentTextarea;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const value = textarea.value;
+
     let cursorPos = start + symbol.length;
     if (symbol.includes('{}')) {
       cursorPos = start + symbol.indexOf('{}') + 1;
     }
+
     textarea.value = value.substring(0, start) + symbol + value.substring(end);
     textarea.selectionStart = cursorPos;
     textarea.selectionEnd = cursorPos;
     textarea.dispatchEvent(new Event('input'));
     textarea.focus();
 
+    // প্যানেল বন্ধ করুন
     const panel = document.getElementById('math-symbols-panel');
-    if (panel) {
-      panel.classList.remove('show');
-      this.panelOpen = false;
+    if (panel) panel.classList.remove('show');
+
+    // যদি প্রিভিউ ওপেন থাকে, তাহলে আপডেট করুন
+    if (this.overlayMap[textarea.id] && this.overlayMap[textarea.id].classList.contains('active')) {
+      this.renderOverlay(textarea.id);
     }
   },
 
-  updatePreview(textareaId) {
-    const textarea = document.getElementById(textareaId);
-    const overlay = document.getElementById('overlay-' + textareaId);
-    if (!textarea || !overlay) {
-      console.warn('Textarea or overlay not found for preview');
-      return;
-    }
-
-    const content = textarea.value;
-    overlay.innerHTML = '';
-
-    if (!content.trim()) {
-      overlay.innerHTML = '<div class="text-center text-gray-400 p-4">No content to preview</div>';
-      return;
-    }
-
-    // MathJax রেন্ডার করার জন্য প্রসেসিং
-    let processed = content;
-    // যদি ইতিমধ্যে ডেলিমিটার না থাকে তবে যোগ করুন
-    const hasDelimiters = /\\\(|\\\[|\$/.test(content);
-    if (!hasDelimiters) {
-      // সাধারণ ল্যাটেক্স প্যাটার্ন চেক
-      const hasLatex = /\\[a-zA-Z]|\\[\[\]\(\)]|\^|_|\\frac|\\sqrt|\\sum|\\int|\\lim/.test(content);
-      if (hasLatex) {
-        processed = `\\(${content}\\)`;
-      }
-    }
-
-    overlay.innerHTML = processed;
-
-    // MathJax রেন্ডার করুন
-    if (window.MathJax) {
-      try {
-        MathJax.typesetPromise([overlay]).then(() => {
-          console.log('Preview rendered successfully');
-        }).catch((err) => {
-          console.warn('MathJax rendering error:', err);
-          overlay.innerHTML = '<div class="text-red-500 p-2">MathJax rendering error</div>';
-        });
-      } catch (e) {
-        console.warn('MathJax error:', e);
-        overlay.innerHTML = '<div class="text-red-500 p-2">MathJax error</div>';
-      }
-    } else {
-      console.warn('MathJax not loaded, preview may not render');
-    }
-  },
-
+  // প্যানেল বন্ধ করুন
   closePanel() {
     const panel = document.getElementById('math-symbols-panel');
-    if (panel) {
-      panel.classList.remove('show');
-      this.panelOpen = false;
-    }
+    if (panel) panel.classList.remove('show');
   }
 };
-
-// DOM রেডি হওয়ার পর ইনিশিয়ালাইজ
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    window.MathEditor.init();
-  });
-} else {
-  window.MathEditor.init();
-}
 
 // অটো রিসাইজ টেক্সটএরিয়া
 window.autoResizeTextarea = function(textarea) {
@@ -203,12 +240,20 @@ window.autoResizeTextarea = function(textarea) {
   textarea.style.height = textarea.scrollHeight + 'px';
 };
 
-// শো ম্যাথ বাটন (ক্রিয়েট ভিউ থেকে কল হবে)
+// শো ম্যাথ বাটন
 window.showMathButton = function() {
   const btn = document.getElementById('floating-math-btn');
   if (btn) {
     btn.classList.remove('hidden');
     btn.style.display = 'flex';
-    console.log('✅ Math button shown');
   }
 };
+
+// DOM রেডি হলে ইনিশিয়ালাইজ
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.MathEditor.init();
+  });
+} else {
+  window.MathEditor.init();
+}
